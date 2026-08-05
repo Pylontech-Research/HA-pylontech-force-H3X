@@ -3,9 +3,10 @@
   "name": "Pylontech Force H3X",
   "codeowners": ["@zhiliangxiaoying"],
   "config_flow": true,
+  "dependencies": ["frontend", "http", "panel_custom"],
   "integration_type": "device",
   "iot_class": "local_polling",
   "loggers": ["pymodbus"],
   "requirements": ["pymodbus==3.13.1"],
-  "version": "0.4.3"
+  "version": "0.5.0"
 }
