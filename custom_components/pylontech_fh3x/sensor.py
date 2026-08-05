@@ -26,7 +26,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .const import CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE
 from .entity import FH3XCoordinatorEntity
+from .profiles import profile_sensor_description
 from .protocol import FH3XValue
 
 
@@ -387,6 +389,7 @@ ENGINEERING_SENSOR_DESCRIPTIONS = (
         "BMS charge energy today",
         SensorDeviceClass.ENERGY,
         UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _engineering_sensor(
@@ -394,6 +397,7 @@ ENGINEERING_SENSOR_DESCRIPTIONS = (
         "BMS discharge energy today",
         SensorDeviceClass.ENERGY,
         UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         precision=2,
     ),
     _engineering_sensor(
@@ -697,11 +701,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up FH3X sensors."""
     coordinator = entry.runtime_data.coordinator
-    descriptions = (
-        SENSOR_DESCRIPTIONS
-        + DIAGNOSTIC_SENSOR_DESCRIPTIONS
-        + ENGINEERING_SENSOR_DESCRIPTIONS
-        + SCHEDULE_SENSOR_DESCRIPTIONS
+    profile = entry.options.get(CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE)
+    descriptions = tuple(
+        profile_sensor_description(description, profile)
+        for description in (
+            SENSOR_DESCRIPTIONS
+            + DIAGNOSTIC_SENSOR_DESCRIPTIONS
+            + ENGINEERING_SENSOR_DESCRIPTIONS
+            + SCHEDULE_SENSOR_DESCRIPTIONS
+        )
     )
     async_add_entities(
         FH3XSensor(coordinator, description) for description in descriptions
@@ -711,7 +719,7 @@ async def async_setup_entry(
 
     def _add_new_detail_entities() -> None:
         new_descriptions = tuple(
-            description
+            profile_sensor_description(description, profile)
             for description in _detailed_bms_descriptions(coordinator.data.values)
             if description.key not in known_detail_keys
         )

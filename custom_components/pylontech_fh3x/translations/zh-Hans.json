@@ -36,14 +36,18 @@
   "options": {
     "step": {
       "init": {
-        "title": "轮询设置",
+        "title": "FH3X 集成设置",
         "data": {
           "scan_interval": "更新间隔",
-          "detailed_bms": "详细模块与电芯数据"
+          "detailed_bms": "详细模块与电芯数据",
+          "entity_profile": "实体详细程度",
+          "control_profile": "控制开放级别"
         },
         "data_description": {
           "scan_interval": "两次读取之间的秒数，最小为 5 秒。",
-          "detailed_bms": "读取全部可用模块和电芯的电压、温度；会增加多次 Modbus 请求及大量默认禁用的诊断实体。"
+          "detailed_bms": "读取全部可用模块和电芯的电压、温度；会增加多次 Modbus 请求及大量默认禁用的诊断实体。",
+          "entity_profile": "compact 为关键能源数据；standard 增加三相、分路光伏、电池和 EPS 常用数据；engineering 开放全部支持点位。",
+          "control_profile": "read_only 不开放写实体；basic 开放常用 EMS、SOC、EPS 和计划控制；advanced 开放全部本地控制。"
         }
       }
     }
@@ -109,7 +113,8 @@
       "eps_limit_soc_off_grid": {"name": "离网 EPS 预留 SOC"},
       "meter_export_power_max": {"name": "电表馈网功率限制"},
       "peak_shaving_safety_soc": {"name": "削峰安全 SOC"},
-      "peak_shaving_meter_power_limit": {"name": "削峰电表功率限制"}
+      "peak_shaving_meter_power_limit": {"name": "削峰电表功率限制"},
+      "schedule_power": {"name": "计划时段 {period} 功率"}
     },
     "select": {
       "ems_mode": {
@@ -122,7 +127,12 @@
           "user": "用户模式",
           "pn_customer": "PN 客户模式"
         }
-      }
+      },
+      "schedule_mode": {"name": "计划时段 {period} 模式", "state": {"charge": "充电", "discharge": "放电"}}
+    },
+    "time": {
+      "schedule_start": {"name": "计划时段 {period} 开始时间"},
+      "schedule_end": {"name": "计划时段 {period} 结束时间"}
     },
     "switch": {
       "heat_pump_enabled": {"name": "热泵启停"},
@@ -131,7 +141,14 @@
       "period_2_enabled": {"name": "计划时段 2"},
       "period_3_enabled": {"name": "计划时段 3"},
       "period_4_enabled": {"name": "计划时段 4"},
-      "peak_shaving_enabled": {"name": "削峰填谷"}
+      "peak_shaving_enabled": {"name": "削峰填谷"},
+      "schedule_sunday": {"name": "计划时段 {period} 星期日"},
+      "schedule_monday": {"name": "计划时段 {period} 星期一"},
+      "schedule_tuesday": {"name": "计划时段 {period} 星期二"},
+      "schedule_wednesday": {"name": "计划时段 {period} 星期三"},
+      "schedule_thursday": {"name": "计划时段 {period} 星期四"},
+      "schedule_friday": {"name": "计划时段 {period} 星期五"},
+      "schedule_saturday": {"name": "计划时段 {period} 星期六"}
     }
   }
 }

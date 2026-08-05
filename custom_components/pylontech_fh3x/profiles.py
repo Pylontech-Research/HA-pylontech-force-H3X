@@ -1,0 +1,134 @@
+"""Entity exposure profiles for Pylontech Force H3X."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+from typing import Any
+
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+
+from .const import (
+    CONTROL_PROFILE_ADVANCED,
+    CONTROL_PROFILE_BASIC,
+    ENTITY_PROFILE_ENGINEERING,
+    ENTITY_PROFILE_STANDARD,
+    DOMAIN,
+)
+
+STANDARD_SENSOR_KEYS = frozenset(
+    {
+        "pv1_power",
+        "pv2_power",
+        "pv3_power",
+        "grid_voltage_r",
+        "grid_voltage_s",
+        "grid_voltage_t",
+        "grid_frequency",
+        "battery_voltage",
+        "battery_current",
+        "inverter_ambient_temperature",
+        "inverter_heatsink_temperature",
+        "bms_total_voltage",
+        "bms_current",
+        "bms_temperature",
+        "bms_cycles",
+        "bms_cell_voltage_max",
+        "bms_cell_voltage_min",
+        "bms_cell_voltage_delta",
+        "bms_cell_temperature_max",
+        "bms_cell_temperature_min",
+        "eps_power",
+        "bms_charge_energy_today",
+        "bms_discharge_energy_today",
+    }
+)
+
+BASIC_CONTROL_KEYS = frozenset(
+    {
+        "ems_mode",
+        "charge_limit_soc",
+        "eps_limit_soc_on_grid",
+        "eps_limit_soc_off_grid",
+        "eps_enabled",
+        "peak_shaving_enabled",
+        "peak_shaving_safety_soc",
+        "peak_shaving_meter_power_limit",
+        *(
+            f"period_{period}_{suffix}"
+            for period in range(1, 5)
+            for suffix in ("enabled", "start", "end", "mode", "power")
+        ),
+    }
+)
+
+CONTROL_DOMAINS = frozenset({"number", "select", "switch", "time"})
+
+
+def profile_sensor_description(description: Any, profile: str) -> Any:
+    """Apply the selected default visibility to a sensor description."""
+    promote = description.key in STANDARD_SENSOR_KEYS and profile in {
+        ENTITY_PROFILE_STANDARD,
+        ENTITY_PROFILE_ENGINEERING,
+    }
+    enable_all = profile == ENTITY_PROFILE_ENGINEERING
+    if not promote and not enable_all:
+        return description
+    return replace(
+        description,
+        entity_category=None if promote else description.entity_category,
+        entity_registry_enabled_default=True,
+    )
+
+
+def profile_control_description(description: Any, profile: str) -> Any:
+    """Enable control descriptions only after the user opts into a control tier."""
+    enabled = profile == CONTROL_PROFILE_ADVANCED or (
+        profile == CONTROL_PROFILE_BASIC and description.key in BASIC_CONTROL_KEYS
+    )
+    return replace(description, entity_registry_enabled_default=enabled)
+
+
+def _entity_key(unique_id: str, entry_unique_id: str | None) -> str | None:
+    if not entry_unique_id:
+        return None
+    prefix = f"{entry_unique_id}_"
+    return unique_id[len(prefix) :] if unique_id.startswith(prefix) else None
+
+
+def apply_profiles_to_registry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    entity_profile: str,
+    control_profile: str,
+) -> None:
+    """Apply an explicitly selected profile to existing registry entries."""
+    registry = er.async_get(hass)
+    for entry in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+        if entry.platform != DOMAIN:
+            continue
+        domain = entry.entity_id.split(".", 1)[0]
+        key = _entity_key(entry.unique_id, config_entry.unique_id)
+        if key is None:
+            continue
+
+        if domain == "sensor":
+            enabled = entity_profile == ENTITY_PROFILE_ENGINEERING or (
+                entity_profile == ENTITY_PROFILE_STANDARD
+                and key in STANDARD_SENSOR_KEYS
+            )
+            if key not in STANDARD_SENSOR_KEYS and entry.entity_category is None:
+                continue
+        elif domain == "binary_sensor":
+            enabled = True
+        elif domain in CONTROL_DOMAINS:
+            enabled = control_profile == CONTROL_PROFILE_ADVANCED or (
+                control_profile == CONTROL_PROFILE_BASIC and key in BASIC_CONTROL_KEYS
+            )
+        else:
+            continue
+
+        disabled_by = None if enabled else RegistryEntryDisabler.INTEGRATION
+        registry.async_update_entity(entry.entity_id, disabled_by=disabled_by)

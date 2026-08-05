@@ -12,7 +12,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .const import CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
 from .entity import FH3XCoordinatorEntity
+from .profiles import profile_control_description
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -28,14 +30,16 @@ TIME_DESCRIPTIONS = tuple(
     for description in (
         FH3XTimeEntityDescription(
             key=f"period_{period}_start",
-            name=f"Schedule period {period} start",
+            translation_key="schedule_start",
+            translation_placeholders={"period": str(period)},
             entity_category=EntityCategory.CONFIG,
             entity_registry_enabled_default=False,
             register_address=40909 + (period - 1) * 6,
         ),
         FH3XTimeEntityDescription(
             key=f"period_{period}_end",
-            name=f"Schedule period {period} end",
+            translation_key="schedule_end",
+            translation_placeholders={"period": str(period)},
             entity_category=EntityCategory.CONFIG,
             entity_registry_enabled_default=False,
             register_address=40910 + (period - 1) * 6,
@@ -51,8 +55,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up FH3X schedule time controls."""
     coordinator = entry.runtime_data.coordinator
+    profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     async_add_entities(
-        FH3XScheduleTime(coordinator, description) for description in TIME_DESCRIPTIONS
+        FH3XScheduleTime(
+            coordinator,
+            profile_control_description(description, profile),
+        )
+        for description in TIME_DESCRIPTIONS
     )
 
 

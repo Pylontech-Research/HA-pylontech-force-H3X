@@ -11,7 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .const import CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
 from .entity import FH3XCoordinatorEntity
+from .profiles import profile_control_description
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -76,7 +78,8 @@ SWITCH_DESCRIPTIONS = (
     *(
         FH3XSwitchEntityDescription(
             key=f"period_{period}_{day}",
-            name=f"Schedule period {period} {day.title()}",
+            translation_key=f"schedule_{day}",
+            translation_placeholders={"period": str(period)},
             entity_category=EntityCategory.CONFIG,
             entity_registry_enabled_default=False,
             register_address=40913 + (period - 1) * 6,
@@ -106,8 +109,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up FH3X switches."""
     coordinator = entry.runtime_data.coordinator
+    profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     async_add_entities(
-        FH3XSwitch(coordinator, description) for description in SWITCH_DESCRIPTIONS
+        FH3XSwitch(coordinator, profile_control_description(description, profile))
+        for description in SWITCH_DESCRIPTIONS
     )
 
 

@@ -31,6 +31,20 @@ Writable entities are disabled by default. Enable only the settings you need fro
 is serialized with polling, written to the PCS at device ID `2`, read back for
 verification, and followed by a complete coordinator refresh.
 
+The Integration options provide two independent visibility profiles:
+
+- Entity detail: **Compact**, **Standard** or **Engineering**. Standard promotes
+  useful PV-string power, three-phase grid, battery, BMS and EPS values without
+  exposing every raw protocol point.
+- Control exposure: **Read only**, **Basic controls** or **Advanced controls**.
+  Selecting a writable tier is an explicit opt-in and updates existing entity
+  registry entries as well as new installations.
+
+Basic controls use native Home Assistant UI types: enum selectors for EMS and
+charge/discharge mode, time pickers for schedule boundaries, enable switches,
+and sliders for SOC and schedule power. Advanced mode additionally exposes raw
+signed power, export limit, heat-pump and individual weekday-bit controls.
+
 ## Controls and safety
 
 The optional controls implement PCS protocol V1.36 registers also exposed by the

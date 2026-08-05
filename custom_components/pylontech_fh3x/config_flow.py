@@ -17,16 +17,23 @@ from .api import (
     FH3XProtocolError,
 )
 from .const import (
+    CONF_CONTROL_PROFILE,
     CONF_DETAILED_BMS,
+    CONF_ENTITY_PROFILE,
     CONF_SCAN_INTERVAL,
+    CONTROL_PROFILES,
+    DEFAULT_CONTROL_PROFILE,
     DEFAULT_DETAILED_BMS,
+    DEFAULT_ENTITY_PROFILE,
     DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    ENTITY_PROFILES,
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
 )
+from .profiles import apply_profiles_to_registry
 from .protocol import FH3XIdentity
 
 _LOGGER = logging.getLogger(__name__)
@@ -139,6 +146,12 @@ class FH3XOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         """Configure polling behavior."""
         if user_input is not None:
+            apply_profiles_to_registry(
+                self.hass,
+                self.config_entry,
+                user_input[CONF_ENTITY_PROFILE],
+                user_input[CONF_CONTROL_PROFILE],
+            )
             return self.async_create_entry(data=user_input)
 
         current = self.config_entry.options.get(
@@ -146,6 +159,12 @@ class FH3XOptionsFlow(OptionsFlowWithReload):
         )
         detailed_bms = self.config_entry.options.get(
             CONF_DETAILED_BMS, DEFAULT_DETAILED_BMS
+        )
+        entity_profile = self.config_entry.options.get(
+            CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE
+        )
+        control_profile = self.config_entry.options.get(
+            CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
         )
         return self.async_show_form(
             step_id="init",
@@ -156,6 +175,24 @@ class FH3XOptionsFlow(OptionsFlowWithReload):
                         vol.Range(min=MIN_SCAN_INTERVAL, max=MAX_SCAN_INTERVAL),
                     ),
                     vol.Required(CONF_DETAILED_BMS, default=detailed_bms): bool,
+                    vol.Required(
+                        CONF_ENTITY_PROFILE, default=entity_profile
+                    ): vol.In(
+                        {
+                            ENTITY_PROFILES[0]: "Compact",
+                            ENTITY_PROFILES[1]: "Standard",
+                            ENTITY_PROFILES[2]: "Engineering",
+                        }
+                    ),
+                    vol.Required(
+                        CONF_CONTROL_PROFILE, default=control_profile
+                    ): vol.In(
+                        {
+                            CONTROL_PROFILES[0]: "Read only",
+                            CONTROL_PROFILES[1]: "Basic controls",
+                            CONTROL_PROFILES[2]: "Advanced controls",
+                        }
+                    ),
                 }
             ),
         )

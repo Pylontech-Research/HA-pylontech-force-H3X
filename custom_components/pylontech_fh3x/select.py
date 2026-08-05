@@ -11,7 +11,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .const import CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
 from .entity import FH3XCoordinatorEntity
+from .profiles import profile_control_description
 
 EMS_MODE_TO_REGISTER = {
     "self_consumption": 0,
@@ -46,7 +48,8 @@ EMS_MODE_DESCRIPTION = SelectEntityDescription(
 SCHEDULE_MODE_DESCRIPTIONS = tuple(
     FH3XScheduleSelectDescription(
         key=f"period_{period}_mode",
-        name=f"Schedule period {period} mode",
+        translation_key="schedule_mode",
+        translation_placeholders={"period": str(period)},
         options=list(SCHEDULE_MODE_TO_REGISTER),
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
@@ -63,10 +66,19 @@ async def async_setup_entry(
 ) -> None:
     """Set up the FH3X EMS mode control."""
     coordinator = entry.runtime_data.coordinator
+    profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     async_add_entities(
-        [FH3XEMSModeSelect(coordinator, EMS_MODE_DESCRIPTION)]
+        [
+            FH3XEMSModeSelect(
+                coordinator,
+                profile_control_description(EMS_MODE_DESCRIPTION, profile),
+            )
+        ]
         + [
-            FH3XScheduleModeSelect(coordinator, description)
+            FH3XScheduleModeSelect(
+                coordinator,
+                profile_control_description(description, profile),
+            )
             for description in SCHEDULE_MODE_DESCRIPTIONS
         ]
     )

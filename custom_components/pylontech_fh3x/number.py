@@ -16,7 +16,9 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .const import CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
 from .entity import FH3XCoordinatorEntity
+from .profiles import profile_control_description
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,8 +38,8 @@ NUMBER_DESCRIPTIONS = (
         native_unit_of_measurement=PERCENTAGE,
         native_min_value=-100,
         native_max_value=100,
-        native_step=0.1,
-        mode=NumberMode.BOX,
+        native_step=1,
+        mode=NumberMode.SLIDER,
         entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40901,
@@ -126,12 +128,13 @@ NUMBER_DESCRIPTIONS = (
     *(
         FH3XNumberEntityDescription(
             key=f"period_{period}_power",
-            name=f"Schedule period {period} power",
+            translation_key="schedule_power",
+            translation_placeholders={"period": str(period)},
             native_unit_of_measurement=PERCENTAGE,
             native_min_value=0,
             native_max_value=100,
-            native_step=0.1,
-            mode=NumberMode.BOX,
+            native_step=1,
+            mode=NumberMode.SLIDER,
             entity_category=EntityCategory.CONFIG,
             entity_registry_enabled_default=False,
             register_address=40912 + (period - 1) * 6,
@@ -150,8 +153,10 @@ async def async_setup_entry(
 ) -> None:
     """Set up FH3X number controls."""
     coordinator = entry.runtime_data.coordinator
+    profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     async_add_entities(
-        FH3XNumber(coordinator, description) for description in NUMBER_DESCRIPTIONS
+        FH3XNumber(coordinator, profile_control_description(description, profile))
+        for description in NUMBER_DESCRIPTIONS
     )
 
 
@@ -168,6 +173,27 @@ class FH3XNumber(FH3XCoordinatorEntity, NumberEntity):
     def native_value(self) -> float | None:
         value = self.coordinator.data.values.get(self.entity_description.key)
         return float(value) if isinstance(value, int | float) else None
+
+    @property
+    def available(self) -> bool:
+        """Disable mode-dependent controls until their prerequisite is active."""
+        description = self.entity_description
+        return super().available and (
+            description.required_ems_mode is None
+            or self.coordinator.data.values.get("ems_mode")
+            == description.required_ems_mode
+        )
+
+    @property
+    def native_max_value(self) -> float:
+        """Use the reported PCS rating for the peak-shaving slider when possible."""
+        configured_max = float(self.entity_description.native_max_value)
+        if self.entity_description.key != "peak_shaving_meter_power_limit":
+            return configured_max
+        rated_power = self.coordinator.data.values.get("pcs_max_output_power")
+        if isinstance(rated_power, int | float) and rated_power > 0:
+            return min(configured_max, float(rated_power))
+        return configured_max
 
     async def async_set_native_value(self, value: float) -> None:
         description = self.entity_description

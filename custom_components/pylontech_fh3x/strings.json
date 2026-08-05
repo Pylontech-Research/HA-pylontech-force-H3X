@@ -36,14 +36,18 @@
   "options": {
     "step": {
       "init": {
-        "title": "Polling settings",
+        "title": "FH3X integration settings",
         "data": {
           "scan_interval": "Update interval",
-          "detailed_bms": "Detailed module and cell data"
+          "detailed_bms": "Detailed module and cell data",
+          "entity_profile": "Entity detail level",
+          "control_profile": "Control exposure"
         },
         "data_description": {
           "scan_interval": "Seconds between device polls. Minimum: 5 seconds.",
-          "detailed_bms": "Read every available module and cell voltage/temperature. This adds several Modbus requests and many disabled diagnostic entities."
+          "detailed_bms": "Read every available module and cell voltage/temperature. This adds several Modbus requests and many disabled diagnostic entities.",
+          "entity_profile": "compact = essential energy data; standard = useful phase, PV, battery and EPS values; engineering = every supported point.",
+          "control_profile": "read_only = no writable entities; basic = common EMS, SOC, EPS and schedule controls; advanced = every supported local control."
         }
       }
     }
@@ -109,7 +113,8 @@
       "eps_limit_soc_off_grid": {"name": "Off-grid EPS reserve SOC"},
       "meter_export_power_max": {"name": "Meter export power limit"},
       "peak_shaving_safety_soc": {"name": "Peak-shaving safety SOC"},
-      "peak_shaving_meter_power_limit": {"name": "Peak-shaving meter power limit"}
+      "peak_shaving_meter_power_limit": {"name": "Peak-shaving meter power limit"},
+      "schedule_power": {"name": "Schedule period {period} power"}
     },
     "select": {
       "ems_mode": {
@@ -122,7 +127,12 @@
           "user": "User",
           "pn_customer": "PN customer"
         }
-      }
+      },
+      "schedule_mode": {"name": "Schedule period {period} mode", "state": {"charge": "Charge", "discharge": "Discharge"}}
+    },
+    "time": {
+      "schedule_start": {"name": "Schedule period {period} start"},
+      "schedule_end": {"name": "Schedule period {period} end"}
     },
     "switch": {
       "heat_pump_enabled": {"name": "Heat pump"},
@@ -131,7 +141,14 @@
       "period_2_enabled": {"name": "Schedule period 2"},
       "period_3_enabled": {"name": "Schedule period 3"},
       "period_4_enabled": {"name": "Schedule period 4"},
-      "peak_shaving_enabled": {"name": "Peak shaving"}
+      "peak_shaving_enabled": {"name": "Peak shaving"},
+      "schedule_sunday": {"name": "Schedule period {period} Sunday"},
+      "schedule_monday": {"name": "Schedule period {period} Monday"},
+      "schedule_tuesday": {"name": "Schedule period {period} Tuesday"},
+      "schedule_wednesday": {"name": "Schedule period {period} Wednesday"},
+      "schedule_thursday": {"name": "Schedule period {period} Thursday"},
+      "schedule_friday": {"name": "Schedule period {period} Friday"},
+      "schedule_saturday": {"name": "Schedule period {period} Saturday"}
     }
   }
 }

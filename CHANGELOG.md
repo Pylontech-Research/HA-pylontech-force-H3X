@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 - 2026-08-05
+
+- Added compact, standard and engineering entity-detail profiles.
+- Added read-only, basic and advanced control-exposure profiles that also
+  update existing entity-registry entries when explicitly selected.
+- Promoted useful PV, three-phase grid, battery, BMS and EPS values in the
+  standard profile while keeping raw engineering points out of the main view.
+- Improved schedule controls with localized native time, switch, enum and
+  percentage-slider entities.
+- Changed manual and schedule percentage controls to slider mode, added an EMS
+  mode interlock, and constrained peak-shaving power from the reported PCS
+  rating when available.
+
 ## 0.3.1 - 2026-08-05
 
 - Allowed setup against FH3X firmware or gateways that return an empty PCS
