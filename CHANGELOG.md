@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.2 - 2026-08-05
+
+- Rebuilt all brand assets from the supplied upright Pylontech master artwork.
+- Preserved the original logo aspect ratio and generated square icons with
+  transparent side padding instead of stretching the mark.
+
 ## 0.4.1 - 2026-08-05
 
 - Added the official Pylontech icon and wordmark as local Home Assistant brand
