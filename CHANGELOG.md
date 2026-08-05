@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 - 2026-08-05
+
+- Allowed setup against FH3X firmware or gateways that return an empty PCS
+  identity block, using the Modbus endpoint as a stable local fallback identity.
+- Kept connection and Modbus response validation in place; only the empty serial
+  number check is relaxed.
+
 ## 0.3.0 - 2026-08-05
 
 - Expanded PCS monitoring to include AC, EPS, three-phase, backup, meter,

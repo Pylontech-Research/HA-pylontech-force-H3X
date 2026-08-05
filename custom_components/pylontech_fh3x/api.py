@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import replace
 
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
@@ -352,9 +353,23 @@ class FH3XModbusClient:
             )
             identity = decode_identity(registers)
             if not identity.serial:
-                raise FH3XProtocolError("PCS returned an empty serial number")
+                identity = self._identity_with_address_fallback(identity)
             self._identity = identity
             return identity
+
+    def _identity_with_address_fallback(
+        self, identity: FH3XIdentity
+    ) -> FH3XIdentity:
+        """Create a stable identity when firmware leaves identity registers empty."""
+        fallback_serial = f"modbus-{self.host}:{self.port}"
+        _LOGGER.warning(
+            "FH3X at %s:%s returned an empty PCS serial number; using %s as "
+            "the local identity",
+            self.host,
+            self.port,
+            fallback_serial,
+        )
+        return replace(identity, serial=fallback_serial)
 
     async def async_read_snapshot(self) -> FH3XSnapshot:
         """Read all current PCS and BMS data in one serialized poll."""
@@ -369,7 +384,9 @@ class FH3XModbusClient:
                 )
                 self._identity = decode_identity(identity_registers)
                 if not self._identity.serial:
-                    raise FH3XProtocolError("PCS returned an empty serial number")
+                    self._identity = self._identity_with_address_fallback(
+                        self._identity
+                    )
                 try:
                     device_registers = await self._async_read_registers(
                         PCS_DEVICE_INFO_EXT_ADDRESS,

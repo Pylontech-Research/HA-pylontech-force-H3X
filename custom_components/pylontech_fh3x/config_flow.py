@@ -20,6 +20,7 @@ from .const import (
     CONF_DETAILED_BMS,
     CONF_SCAN_INTERVAL,
     DEFAULT_DETAILED_BMS,
+    DEFAULT_NAME,
     DEFAULT_PORT,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -66,7 +67,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 await self.async_set_unique_id(identity.serial)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=identity.model,
+                    title=identity.model or DEFAULT_NAME,
                     data=user_input,
                 )
 
