@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -27,6 +28,11 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
     ) -> None:
         """Initialize the coordinator."""
         self.client = client
+        # Keep a control write and its read-back refresh together.  The
+        # coordinator's normal request refresh is debounced for 10 seconds;
+        # without this lock, rapid UI changes can overlap and a stale refresh
+        # can briefly put the previous schedule value back on screen.
+        self._write_lock = asyncio.Lock()
         scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
         super().__init__(
             hass,
@@ -45,15 +51,20 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
 
     async def async_write_u16(self, address: int, value: int) -> None:
         """Write a U16 control value and refresh all entities."""
-        await self.client.async_write_u16(address, value)
-        await self.async_request_refresh()
+        async with self._write_lock:
+            await self.client.async_write_u16(address, value)
+            # Bypass DataUpdateCoordinator's 10-second request debouncer so
+            # select/number/switch entities reflect the verified value now.
+            await self.async_refresh()
 
     async def async_write_s16(self, address: int, value: int) -> None:
         """Write an S16 control value and refresh all entities."""
-        await self.client.async_write_s16(address, value)
-        await self.async_request_refresh()
+        async with self._write_lock:
+            await self.client.async_write_s16(address, value)
+            await self.async_refresh()
 
     async def async_write_s32(self, address: int, value: int) -> None:
         """Write an S32 control value and refresh all entities."""
-        await self.client.async_write_s32(address, value)
-        await self.async_request_refresh()
+        async with self._write_lock:
+            await self.client.async_write_s32(address, value)
+            await self.async_refresh()

@@ -70,3 +70,9 @@
 - Added solar, grid, load, battery, energy, engineering and alarm entities.
 - Added diagnostics and English/Simplified Chinese translations.
 - Kept the initial release read-only until control registers are verified on real hardware.
+
+## 0.4.3
+
+- Serialize control writes and force an immediate verified refresh so rapid
+  schedule changes do not show stale values during the coordinator debounce
+  window.
