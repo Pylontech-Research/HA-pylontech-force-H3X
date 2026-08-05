@@ -1,0 +1,137 @@
+{
+  "title": "派能 Force H3X",
+  "config": {
+    "step": {
+      "user": {
+        "title": "连接 Force H3X",
+        "description": "通过局域网直接连接 FH3X 的 Modbus TCP 接口，不需要云端账号。",
+        "data": {
+          "host": "IP 地址",
+          "port": "端口"
+        },
+        "data_description": {
+          "host": "FH3X 在局域网中的 IP 地址。",
+          "port": "Modbus TCP 端口，协议默认值为 502。"
+        }
+      },
+      "reconfigure": {
+        "title": "更新 FH3X 连接",
+        "description": "修改局域网连接参数，保存前会验证是否为同一台设备。",
+        "data": {
+          "host": "IP 地址",
+          "port": "端口"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接。请检查 IP、端口、网络路由以及设备是否已开启 Modbus TCP。",
+      "invalid_response": "设备有响应，但返回内容不是有效的 FH3X PCS 身份信息。",
+      "unknown": "发生未知错误"
+    },
+    "abort": {
+      "already_configured": "这台 FH3X 已经配置。",
+      "unique_id_mismatch": "新地址连接到的是另一台 FH3X。"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "轮询设置",
+        "data": {
+          "scan_interval": "更新间隔",
+          "detailed_bms": "详细模块与电芯数据"
+        },
+        "data_description": {
+          "scan_interval": "两次读取之间的秒数，最小为 5 秒。",
+          "detailed_bms": "读取全部可用模块和电芯的电压、温度；会增加多次 Modbus 请求及大量默认禁用的诊断实体。"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_total_power": {"name": "光伏功率"},
+      "load_power": {"name": "家庭负载功率"},
+      "grid_power": {"name": "电网功率"},
+      "battery_power": {"name": "电池功率"},
+      "battery_soc": {"name": "电池电量"},
+      "inverter_state": {"name": "逆变器状态", "state": {"waiting": "等待", "normal": "正常", "fault": "故障", "unknown": "未知"}},
+      "battery_state": {"name": "电池状态", "state": {"sleeping": "休眠", "charging": "充电", "discharging": "放电", "idle": "空闲", "standby": "待机", "running": "运行", "fault": "故障", "offline": "离线", "unknown": "未知"}},
+      "pv_total_energy": {"name": "光伏发电量"},
+      "grid_import_energy": {"name": "电网购电量"},
+      "grid_export_energy": {"name": "电网馈电量"},
+      "battery_charge_energy": {"name": "电池累计充电量"},
+      "battery_discharge_energy": {"name": "电池累计放电量"},
+      "bms_soh": {"name": "电池健康度"},
+      "bms_cycles": {"name": "电池循环次数"},
+      "bms_remaining_energy": {"name": "电池剩余能量"},
+      "pv1_voltage": {"name": "PV1 电压"},
+      "pv1_current": {"name": "PV1 电流"},
+      "pv1_power": {"name": "PV1 功率"},
+      "pv2_voltage": {"name": "PV2 电压"},
+      "pv2_current": {"name": "PV2 电流"},
+      "pv2_power": {"name": "PV2 功率"},
+      "pv3_voltage": {"name": "PV3 电压"},
+      "pv3_current": {"name": "PV3 电流"},
+      "pv3_power": {"name": "PV3 功率"},
+      "grid_voltage_r": {"name": "电网 R 相电压"},
+      "grid_voltage_s": {"name": "电网 S 相电压"},
+      "grid_voltage_t": {"name": "电网 T 相电压"},
+      "grid_frequency": {"name": "电网频率"},
+      "battery_voltage": {"name": "电池电压"},
+      "battery_current": {"name": "电池电流"},
+      "inverter_ambient_temperature": {"name": "逆变器环境温度"},
+      "inverter_heatsink_temperature": {"name": "逆变器散热器温度"},
+      "bms_total_voltage": {"name": "BMS 总电压"},
+      "bms_current": {"name": "BMS 电流"},
+      "bms_temperature": {"name": "BMS 温度"},
+      "bms_cell_voltage_max": {"name": "最高单体电压"},
+      "bms_cell_voltage_min": {"name": "最低单体电压"},
+      "bms_cell_voltage_delta": {"name": "单体压差"},
+      "bms_cell_temperature_max": {"name": "最高单体温度"},
+      "bms_cell_temperature_min": {"name": "最低单体温度"}
+    },
+    "binary_sensor": {
+      "inverter_fault": {"name": "逆变器故障"},
+      "inverter_warning": {"name": "逆变器警告"},
+      "bms_protection": {"name": "BMS 保护"},
+      "bms_alarm": {"name": "BMS 告警"}
+      ,"battery_charge_forbidden": {"name": "禁止电池充电"}
+      ,"battery_discharge_forbidden": {"name": "禁止电池放电"}
+      ,"battery_force_charge_requested": {"name": "电池强充请求"}
+      ,"battery_balance_charge_requested": {"name": "电池均充请求"}
+      ,"battery_low_soc": {"name": "电池低 SOC"}
+    },
+    "number": {
+      "charge_discharge_power_reference": {"name": "充放电功率指令"},
+      "charge_limit_soc": {"name": "充电 SOC 上限"},
+      "eps_limit_soc_on_grid": {"name": "并网 EPS 预留 SOC"},
+      "eps_limit_soc_off_grid": {"name": "离网 EPS 预留 SOC"},
+      "meter_export_power_max": {"name": "电表馈网功率限制"},
+      "peak_shaving_safety_soc": {"name": "削峰安全 SOC"},
+      "peak_shaving_meter_power_limit": {"name": "削峰电表功率限制"}
+    },
+    "select": {
+      "ems_mode": {
+        "name": "EMS 模式",
+        "state": {
+          "self_consumption": "自发自用",
+          "backup": "备电模式",
+          "off_grid": "离网模式",
+          "feed_in_priority": "馈网优先",
+          "user": "用户模式",
+          "pn_customer": "PN 客户模式"
+        }
+      }
+    },
+    "switch": {
+      "heat_pump_enabled": {"name": "热泵启停"},
+      "eps_enabled": {"name": "EPS 输出"},
+      "period_1_enabled": {"name": "计划时段 1"},
+      "period_2_enabled": {"name": "计划时段 2"},
+      "period_3_enabled": {"name": "计划时段 3"},
+      "period_4_enabled": {"name": "计划时段 4"},
+      "peak_shaving_enabled": {"name": "削峰填谷"}
+    }
+  }
+}

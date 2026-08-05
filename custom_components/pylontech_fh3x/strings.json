@@ -1,0 +1,137 @@
+{
+  "title": "Pylontech Force H3X",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Force H3X",
+        "description": "Connect directly to the local FH3X Modbus TCP endpoint. No cloud account is required.",
+        "data": {
+          "host": "IP address",
+          "port": "Port"
+        },
+        "data_description": {
+          "host": "The local IP address assigned to the FH3X.",
+          "port": "The Modbus TCP port. The protocol default is 502."
+        }
+      },
+      "reconfigure": {
+        "title": "Update FH3X connection",
+        "description": "Change the local connection details and verify the same device before saving.",
+        "data": {
+          "host": "IP address",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect. Check the IP address, port, network route, and whether Modbus TCP is enabled.",
+      "invalid_response": "The device responded, but the response is not a valid FH3X PCS identity.",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This FH3X is already configured.",
+      "unique_id_mismatch": "The new address belongs to a different FH3X."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Polling settings",
+        "data": {
+          "scan_interval": "Update interval",
+          "detailed_bms": "Detailed module and cell data"
+        },
+        "data_description": {
+          "scan_interval": "Seconds between device polls. Minimum: 5 seconds.",
+          "detailed_bms": "Read every available module and cell voltage/temperature. This adds several Modbus requests and many disabled diagnostic entities."
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "pv_total_power": {"name": "Solar power"},
+      "load_power": {"name": "Home load power"},
+      "grid_power": {"name": "Grid power"},
+      "battery_power": {"name": "Battery power"},
+      "battery_soc": {"name": "Battery level"},
+      "inverter_state": {"name": "Inverter state", "state": {"waiting": "Waiting", "normal": "Normal", "fault": "Fault", "unknown": "Unknown"}},
+      "battery_state": {"name": "Battery state", "state": {"sleeping": "Sleeping", "charging": "Charging", "discharging": "Discharging", "idle": "Idle", "standby": "Standby", "running": "Running", "fault": "Fault", "offline": "Offline", "unknown": "Unknown"}},
+      "pv_total_energy": {"name": "Solar energy"},
+      "grid_import_energy": {"name": "Grid import energy"},
+      "grid_export_energy": {"name": "Grid export energy"},
+      "battery_charge_energy": {"name": "Battery charge energy"},
+      "battery_discharge_energy": {"name": "Battery discharge energy"},
+      "bms_soh": {"name": "Battery state of health"},
+      "bms_cycles": {"name": "Battery cycles"},
+      "bms_remaining_energy": {"name": "Remaining battery energy"},
+      "pv1_voltage": {"name": "PV1 voltage"},
+      "pv1_current": {"name": "PV1 current"},
+      "pv1_power": {"name": "PV1 power"},
+      "pv2_voltage": {"name": "PV2 voltage"},
+      "pv2_current": {"name": "PV2 current"},
+      "pv2_power": {"name": "PV2 power"},
+      "pv3_voltage": {"name": "PV3 voltage"},
+      "pv3_current": {"name": "PV3 current"},
+      "pv3_power": {"name": "PV3 power"},
+      "grid_voltage_r": {"name": "Grid R voltage"},
+      "grid_voltage_s": {"name": "Grid S voltage"},
+      "grid_voltage_t": {"name": "Grid T voltage"},
+      "grid_frequency": {"name": "Grid frequency"},
+      "battery_voltage": {"name": "Battery voltage"},
+      "battery_current": {"name": "Battery current"},
+      "inverter_ambient_temperature": {"name": "Inverter ambient temperature"},
+      "inverter_heatsink_temperature": {"name": "Inverter heatsink temperature"},
+      "bms_total_voltage": {"name": "BMS total voltage"},
+      "bms_current": {"name": "BMS current"},
+      "bms_temperature": {"name": "BMS temperature"},
+      "bms_cell_voltage_max": {"name": "Maximum cell voltage"},
+      "bms_cell_voltage_min": {"name": "Minimum cell voltage"},
+      "bms_cell_voltage_delta": {"name": "Cell voltage difference"},
+      "bms_cell_temperature_max": {"name": "Maximum cell temperature"},
+      "bms_cell_temperature_min": {"name": "Minimum cell temperature"}
+    },
+    "binary_sensor": {
+      "inverter_fault": {"name": "Inverter fault"},
+      "inverter_warning": {"name": "Inverter warning"},
+      "bms_protection": {"name": "BMS protection"},
+      "bms_alarm": {"name": "BMS alarm"}
+      ,"battery_charge_forbidden": {"name": "Battery charging forbidden"}
+      ,"battery_discharge_forbidden": {"name": "Battery discharging forbidden"}
+      ,"battery_force_charge_requested": {"name": "Battery force-charge request"}
+      ,"battery_balance_charge_requested": {"name": "Battery balance-charge request"}
+      ,"battery_low_soc": {"name": "Battery low SOC"}
+    },
+    "number": {
+      "charge_discharge_power_reference": {"name": "Charge/discharge power reference"},
+      "charge_limit_soc": {"name": "Charge limit SOC"},
+      "eps_limit_soc_on_grid": {"name": "On-grid EPS reserve SOC"},
+      "eps_limit_soc_off_grid": {"name": "Off-grid EPS reserve SOC"},
+      "meter_export_power_max": {"name": "Meter export power limit"},
+      "peak_shaving_safety_soc": {"name": "Peak-shaving safety SOC"},
+      "peak_shaving_meter_power_limit": {"name": "Peak-shaving meter power limit"}
+    },
+    "select": {
+      "ems_mode": {
+        "name": "EMS mode",
+        "state": {
+          "self_consumption": "Self-consumption",
+          "backup": "Backup",
+          "off_grid": "Off-grid",
+          "feed_in_priority": "Feed-in priority",
+          "user": "User",
+          "pn_customer": "PN customer"
+        }
+      }
+    },
+    "switch": {
+      "heat_pump_enabled": {"name": "Heat pump"},
+      "eps_enabled": {"name": "EPS output"},
+      "period_1_enabled": {"name": "Schedule period 1"},
+      "period_2_enabled": {"name": "Schedule period 2"},
+      "period_3_enabled": {"name": "Schedule period 3"},
+      "period_4_enabled": {"name": "Schedule period 4"},
+      "peak_shaving_enabled": {"name": "Peak shaving"}
+    }
+  }
+}
