@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.1 - 2026-08-05
+
+- Added the official Pylontech icon and wordmark as local Home Assistant brand
+  assets, including standard and high-density variants.
+
 ## 0.4.0 - 2026-08-05
 
 - Added compact, standard and engineering entity-detail profiles.
