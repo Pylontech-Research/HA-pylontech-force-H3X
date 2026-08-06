@@ -1,0 +1,192 @@
+title: Tesla Powerwall 示例
+views:
+  - title: 能源
+    path: energy
+    icon: mdi:solar-power
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        column_span: 3
+        cards:
+          - type: markdown
+            content: |
+              # Tesla Powerwall
+              **Powerwall 2 · 模拟设备**  ·  本地轮询  ·  数据每 2 秒更新
+
+              这是 HA 原生实体与卡片的 Tesla Powerwall 预览，不是 Tesla 官方 App 的截图。
+      - type: grid
+        cards:
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_solar_now
+            name: 光伏
+            icon: mdi:solar-power
+            color: amber
+            features_position: bottom
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_load_now
+            name: 家庭负载
+            icon: mdi:home-lightning-bolt
+            color: blue
+            features_position: bottom
+      - type: grid
+        cards:
+          - type: gauge
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_charge
+            name: 电池电量
+            min: 0
+            max: 100
+            needle: true
+            severity:
+              green: 40
+              yellow: 20
+              red: 0
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_now
+            name: 电池功率
+            icon: mdi:battery-charging-medium
+            color: green
+      - type: grid
+        cards:
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_now
+            name: 电网
+            icon: mdi:transmission-tower
+            color: cyan
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_backup_reserve
+            name: 备电保留
+            icon: mdi:battery-lock
+            color: purple
+      - type: grid
+        column_span: 2
+        cards:
+          - type: history-graph
+            title: 实时能量流
+            hours_to_show: 6
+            logarithmic_scale: false
+            entities:
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_solar_now
+                name: 光伏
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_load_now
+                name: 负载
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_now
+                name: 电池（负值为充电）
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_now
+                name: 电网（负值为馈电）
+      - type: grid
+        cards:
+          - type: entities
+            title: Powerwall 状态
+            state_color: true
+            entities:
+              - entity: binary_sensor.tesla_powerwall_mo_ni_she_bei_powerwall_status
+                name: 系统状态
+              - entity: binary_sensor.tesla_powerwall_mo_ni_she_bei_grid_status
+                name: 电网状态
+              - entity: binary_sensor.tesla_powerwall_mo_ni_she_bei_powerwall_charging
+                name: 电池充电
+              - entity: switch.tesla_powerwall_mo_ni_she_bei_off_grid_operation
+                name: 离网运行（模拟）
+          - type: statistics-graph
+            title: 今日累计能量
+            chart_type: bar
+            period: day
+            stat_types:
+              - change
+            entities:
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_import
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_export
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_import
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_export
+
+  - title: 电池
+    path: battery
+    icon: mdi:battery-high
+    type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Powerwall 电池
+            heading_style: title
+            icon: mdi:battery-high
+          - type: gauge
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_charge
+            name: 当前电量
+            min: 0
+            max: 100
+            needle: true
+            severity: {green: 40, yellow: 20, red: 0}
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_now
+            name: 当前功率
+            icon: mdi:flash
+            color: green
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_backup_reserve
+            name: 备电保留
+            icon: mdi:battery-lock
+            color: purple
+      - type: grid
+        column_span: 3
+        cards:
+          - type: history-graph
+            title: 电池功率与电量
+            hours_to_show: 12
+            entities:
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_now
+                name: 功率
+              - entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_charge
+                name: SOC
+          - type: entities
+            title: 电池能量
+            entities:
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_import
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_battery_export
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_frequency_now
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_average_voltage_now
+
+  - title: 电网与光伏
+    path: grid-solar
+    icon: mdi:transmission-tower-export
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_solar_now
+            name: 光伏功率
+            icon: mdi:solar-power
+            color: amber
+          - type: tile
+            entity: sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_now
+            name: 电网功率
+            icon: mdi:transmission-tower
+            color: cyan
+          - type: history-graph
+            title: 光伏 / 电网
+            hours_to_show: 12
+            entities:
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_solar_now
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_now
+      - type: grid
+        cards:
+          - type: entities
+            title: 电网质量
+            entities:
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_frequency_now
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_average_voltage_now
+              - binary_sensor.tesla_powerwall_mo_ni_she_bei_grid_services
+              - binary_sensor.tesla_powerwall_mo_ni_she_bei_powerwall_connected_to_tesla
+          - type: statistics-graph
+            title: 累计购电 / 馈电
+            chart_type: line
+            period: day
+            stat_types: [change]
+            entities:
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_import
+              - sensor.tesla_powerwall_mo_ni_she_bei_powerwall_site_export
