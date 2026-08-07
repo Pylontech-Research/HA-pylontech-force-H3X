@@ -40,6 +40,7 @@ from .protocol import (
     FH3XIdentity,
     FH3XSnapshot,
     FH3XValue,
+    TotalIncreasingGuard,
     decode_active_power_controls,
     decode_bms,
     decode_bms_detail_values,
@@ -94,6 +95,7 @@ class FH3XModbusClient:
         self._lock = asyncio.Lock()
         self._identity: FH3XIdentity | None = None
         self._device_values: dict[str, FH3XValue] = {}
+        self._total_increasing_guard = TotalIncreasingGuard()
 
     async def _async_ensure_connected(self) -> None:
         if self._client.connected:
@@ -434,6 +436,7 @@ class FH3XModbusClient:
         values.update(bms_values)
         values.update(detailed_bms_values)
         values.update(control_values)
+        self._total_increasing_guard.apply(values)
         return FH3XSnapshot(
             identity=self._identity,
             values=values,

@@ -10,8 +10,16 @@ from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
 
 from .api import FH3XModbusClient
-from .const import CONF_DETAILED_BMS, DEFAULT_DETAILED_BMS
+from .const import (
+    CONF_CONTROL_PROFILE,
+    CONF_DETAILED_BMS,
+    CONF_ENTITY_PROFILE,
+    DEFAULT_CONTROL_PROFILE,
+    DEFAULT_DETAILED_BMS,
+    DEFAULT_ENTITY_PROFILE,
+)
 from .coordinator import FH3XCoordinator
+from .profiles import apply_profiles_to_registry
 
 PLATFORMS = [
     Platform.SENSOR,
@@ -36,6 +44,15 @@ FH3XConfigEntry: TypeAlias = ConfigEntry[FH3XRuntimeData]
 
 async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool:
     """Set up an FH3X from a config entry."""
+    entity_profile = entry.options.get(CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE)
+    control_profile = entry.options.get(
+        CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
+    )
+    # Apply the profile before touching the network. Existing installations
+    # must still get a cleaned-up device page when the inverter is offline and
+    # the first coordinator refresh enters setup retry.
+    apply_profiles_to_registry(hass, entry, entity_profile, control_profile)
+
     client = FH3XModbusClient(
         host=entry.data[CONF_HOST],
         port=entry.data[CONF_PORT],
@@ -46,6 +63,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool
 
     entry.runtime_data = FH3XRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    # Entity registry entries keep their previous enabled/disabled state across
+    # upgrades.  Reapply the selected exposure tier so changing the recommended
+    # default also cleans up existing installations that never chose a profile.
+    apply_profiles_to_registry(
+        hass,
+        entry,
+        entity_profile,
+        control_profile,
+    )
     return True
 
 

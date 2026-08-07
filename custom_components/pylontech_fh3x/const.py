@@ -32,7 +32,10 @@ DEFAULT_PORT = 502
 DEFAULT_SCAN_INTERVAL = 10
 DEFAULT_TIMEOUT = 5
 DEFAULT_DETAILED_BMS = False
-DEFAULT_ENTITY_PROFILE = ENTITY_PROFILE_STANDARD
+# Match the default exposure of mature energy integrations: ordinary users get
+# the system-level power, energy and health entities.  Per-string, per-phase,
+# cell/module and engineering values remain available through the options flow.
+DEFAULT_ENTITY_PROFILE = ENTITY_PROFILE_COMPACT
 DEFAULT_CONTROL_PROFILE = CONTROL_PROFILE_READ_ONLY
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 300

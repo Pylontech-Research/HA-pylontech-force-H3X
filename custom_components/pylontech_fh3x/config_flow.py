@@ -179,18 +179,18 @@ class FH3XOptionsFlow(OptionsFlowWithReload):
                         CONF_ENTITY_PROFILE, default=entity_profile
                     ): vol.In(
                         {
-                            ENTITY_PROFILES[0]: "Compact",
-                            ENTITY_PROFILES[1]: "Standard",
-                            ENTITY_PROFILES[2]: "Engineering",
+                            ENTITY_PROFILES[0]: "Recommended (core energy only)",
+                            ENTITY_PROFILES[1]: "Extended monitoring",
+                            ENTITY_PROFILES[2]: "Engineering diagnostics",
                         }
                     ),
                     vol.Required(
                         CONF_CONTROL_PROFILE, default=control_profile
                     ): vol.In(
                         {
-                            CONTROL_PROFILES[0]: "Read only",
+                            CONTROL_PROFILES[0]: "Read only (recommended)",
                             CONTROL_PROFILES[1]: "Basic controls",
-                            CONTROL_PROFILES[2]: "Advanced controls",
+                            CONTROL_PROFILES[2]: "Advanced controls and schedules",
                         }
                     ),
                 }

@@ -41,6 +41,61 @@ BMS_CELL_TEMPERATURE_OFFSET = 0x400
 
 FH3XValue = int | float | str
 
+# Values exposed with SensorStateClass.TOTAL_INCREASING.  Some PCS firmware can
+# return a single torn Float32 read while the counter is changing.  Passing that
+# one-off regression to Home Assistant makes Recorder interpret it as a meter
+# reset and permanently inflates Energy Dashboard totals.
+TOTAL_INCREASING_KEYS = frozenset(
+    {
+        "pv_total_energy",
+        "grid_import_energy",
+        "grid_export_energy",
+        "battery_charge_energy",
+        "battery_discharge_energy",
+        "battery_charge_energy_from_ac",
+        "eps_output_energy",
+        "bms_charge_energy_today",
+        "bms_discharge_energy_today",
+    }
+)
+
+
+class TotalIncreasingGuard:
+    """Reject an isolated cumulative-meter regression.
+
+    A genuine device reset is accepted after the new, lower baseline is seen
+    in two consecutive polls.  The first lower sample is held back so a torn
+    two-register read cannot corrupt Home Assistant long-term statistics.
+    """
+
+    def __init__(self) -> None:
+        self._last: dict[str, int | float] = {}
+        self._reset_candidate: dict[str, int | float] = {}
+
+    def apply(self, values: dict[str, FH3XValue]) -> None:
+        """Stabilize cumulative values in place."""
+        for key in TOTAL_INCREASING_KEYS:
+            value = values.get(key)
+            if not isinstance(value, int | float):
+                continue
+
+            previous = self._last.get(key)
+            if previous is None or value >= previous:
+                self._last[key] = value
+                self._reset_candidate.pop(key, None)
+                continue
+
+            candidate = self._reset_candidate.get(key)
+            if candidate is not None and value >= candidate:
+                # A second sample at or above the lower baseline confirms a
+                # real counter reset. Recorder can now handle the decrease.
+                self._last[key] = value
+                self._reset_candidate.pop(key, None)
+                continue
+
+            self._reset_candidate[key] = value
+            values[key] = previous
+
 
 class FH3XDecodeError(ValueError):
     """Raised when a Modbus response cannot be decoded."""

@@ -46,21 +46,26 @@ STANDARD_SENSOR_KEYS = frozenset(
     }
 )
 
+# These four entities aggregate the raw PCS/BMS fault bitfields and expose the
+# decoded issue list as attributes.  The individual condition flags are useful
+# for service engineers, but add little value to a normal HA device page.
+CORE_BINARY_SENSOR_KEYS = frozenset(
+    {
+        "inverter_fault",
+        "inverter_warning",
+        "bms_protection",
+        "bms_alarm",
+    }
+)
+
 BASIC_CONTROL_KEYS = frozenset(
     {
         "ems_mode",
+        "charge_discharge_power_reference",
         "charge_limit_soc",
         "eps_limit_soc_on_grid",
         "eps_limit_soc_off_grid",
         "eps_enabled",
-        "peak_shaving_enabled",
-        "peak_shaving_safety_soc",
-        "peak_shaving_meter_power_limit",
-        *(
-            f"period_{period}_{suffix}"
-            for period in range(1, 5)
-            for suffix in ("enabled", "start", "end", "mode", "power")
-        ),
     }
 )
 
@@ -122,7 +127,10 @@ def apply_profiles_to_registry(
             if key not in STANDARD_SENSOR_KEYS and entry.entity_category is None:
                 continue
         elif domain == "binary_sensor":
-            enabled = True
+            enabled = (
+                key in CORE_BINARY_SENSOR_KEYS
+                or entity_profile == ENTITY_PROFILE_ENGINEERING
+            )
         elif domain in CONTROL_DOMAINS:
             enabled = control_profile == CONTROL_PROFILE_ADVANCED or (
                 control_profile == CONTROL_PROFILE_BASIC and key in BASIC_CONTROL_KEYS
@@ -130,5 +138,13 @@ def apply_profiles_to_registry(
         else:
             continue
 
-        disabled_by = None if enabled else RegistryEntryDisabler.INTEGRATION
-        registry.async_update_entity(entry.entity_id, disabled_by=disabled_by)
+        if enabled:
+            # Enabling a profile may restore entities disabled by this
+            # integration, but must never undo a user's explicit choice.
+            if entry.disabled_by == RegistryEntryDisabler.INTEGRATION:
+                registry.async_update_entity(entry.entity_id, disabled_by=None)
+        elif entry.disabled_by != RegistryEntryDisabler.USER:
+            registry.async_update_entity(
+                entry.entity_id,
+                disabled_by=RegistryEntryDisabler.INTEGRATION,
+            )

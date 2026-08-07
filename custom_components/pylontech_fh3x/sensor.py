@@ -148,6 +148,7 @@ SENSOR_DESCRIPTIONS: tuple[FH3XSensorEntityDescription, ...] = (
         translation_key="bms_cycles",
         state_class=SensorStateClass.TOTAL_INCREASING,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
     FH3XSensorEntityDescription(
         key="bms_remaining_energy",

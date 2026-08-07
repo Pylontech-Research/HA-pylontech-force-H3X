@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0 - 2026-08-07
+
+- Made the compact, read-only entity profile the recommended default.
+- Reduced the normal device page to system energy, battery health/state and
+  four aggregate PCS/BMS problem entities; detailed flags remain opt-in.
+- Reduced the basic control tier to EMS, manual power, SOC and EPS. Schedules,
+  peak shaving and engineering controls now require the advanced tier.
+- Reapply exposure profiles during setup so existing implicit-default installs
+  are cleaned up on upgrade without overriding user-disabled entities.
+- Added cumulative-energy regression filtering to prevent a single torn
+  Modbus Float32 read from corrupting Home Assistant long-term statistics.
+
 ## 0.4.2 - 2026-08-05
 
 - Rebuilt all brand assets from the supplied upright Pylontech master artwork.

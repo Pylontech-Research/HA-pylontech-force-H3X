@@ -41,7 +41,7 @@
           "scan_interval": "Seconds between device polls. Minimum: 5 seconds.",
           "detailed_bms": "Read every available module and cell voltage/temperature. This adds several Modbus requests and many disabled diagnostic entities.",
           "entity_profile": "compact = essential energy data; standard = useful phase, PV, battery and EPS values; engineering = every supported point.",
-          "control_profile": "read_only = no writable entities; basic = common EMS, SOC, EPS and schedule controls; advanced = every supported local control."
+          "control_profile": "read_only = no writable entities; basic = EMS, manual power, SOC and EPS controls; advanced = schedules, peak shaving and every supported local control."
         }
       }
     }

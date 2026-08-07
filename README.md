@@ -33,12 +33,16 @@ verification, and followed by a complete coordinator refresh.
 
 The Integration options provide two independent visibility profiles:
 
-- Entity detail: **Compact**, **Standard** or **Engineering**. Standard promotes
-  useful PV-string power, three-phase grid, battery, BMS and EPS values without
-  exposing every raw protocol point.
+- Entity detail: **Recommended**, **Extended monitoring** or **Engineering
+  diagnostics**. Recommended is the default and exposes only system-level
+  power, cumulative energy, SOC/SOH, operating state and four aggregate alarm
+  entities. PV strings, phases, temperatures, cells and raw protocol values are
+  opt-in.
 - Control exposure: **Read only**, **Basic controls** or **Advanced controls**.
-  Selecting a writable tier is an explicit opt-in and updates existing entity
-  registry entries as well as new installations.
+  Read only is the default. Basic adds EMS, manual power, SOC and EPS; schedules,
+  peak shaving and engineering settings require Advanced. Selecting a writable
+  tier is an explicit opt-in and updates existing entity registry entries as
+  well as new installations.
 
 Basic controls use native Home Assistant UI types: enum selectors for EMS and
 charge/discharge mode, time pickers for schedule boundaries, enable switches,

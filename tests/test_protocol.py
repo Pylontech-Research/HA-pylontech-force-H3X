@@ -29,6 +29,7 @@ PCS_MONITOR_COUNT = PROTOCOL.PCS_MONITOR_COUNT
 PCS_MONITOR_EXT_COUNT = PROTOCOL.PCS_MONITOR_EXT_COUNT
 PCS_PEAK_SHAVING_COUNT = PROTOCOL.PCS_PEAK_SHAVING_COUNT
 FH3XDecodeError = PROTOCOL.FH3XDecodeError
+TotalIncreasingGuard = PROTOCOL.TotalIncreasingGuard
 decode_active_power_controls = PROTOCOL.decode_active_power_controls
 decode_bms = PROTOCOL.decode_bms
 decode_bms_detail_values = PROTOCOL.decode_bms_detail_values
@@ -67,6 +68,31 @@ def _put_float32(registers: list[int], offset: int, value: float) -> None:
 
 class TestFH3XProtocol(unittest.TestCase):
     """Verify protocol decoding and sign conventions."""
+
+    def test_total_increasing_guard_rejects_one_bad_sample(self) -> None:
+        guard = TotalIncreasingGuard()
+        values = {"battery_charge_energy": 107.488}
+        guard.apply(values)
+
+        torn_read = {"battery_charge_energy": 60.249}
+        guard.apply(torn_read)
+        self.assertEqual(torn_read["battery_charge_energy"], 107.488)
+
+        recovered = {"battery_charge_energy": 107.510}
+        guard.apply(recovered)
+        self.assertEqual(recovered["battery_charge_energy"], 107.510)
+
+    def test_total_increasing_guard_accepts_confirmed_reset(self) -> None:
+        guard = TotalIncreasingGuard()
+        guard.apply({"grid_import_energy": 132.5})
+
+        first_reset_sample = {"grid_import_energy": 0.0}
+        guard.apply(first_reset_sample)
+        self.assertEqual(first_reset_sample["grid_import_energy"], 132.5)
+
+        confirmed_reset = {"grid_import_energy": 0.01}
+        guard.apply(confirmed_reset)
+        self.assertEqual(confirmed_reset["grid_import_energy"], 0.01)
 
     def test_identity(self) -> None:
         registers = [0] * PCS_IDENTITY_COUNT

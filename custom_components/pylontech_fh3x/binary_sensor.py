@@ -239,6 +239,7 @@ BINARY_SENSOR_DESCRIPTIONS = (
         translation_key="battery_charge_forbidden",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(
             data.get("bms_charge_forbidden") or data.get("charge_forbidden_mask")
         ),
@@ -248,6 +249,7 @@ BINARY_SENSOR_DESCRIPTIONS = (
         translation_key="battery_discharge_forbidden",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(
             data.get("bms_discharge_forbidden") or data.get("discharge_forbidden_mask")
         ),
@@ -256,6 +258,7 @@ BINARY_SENSOR_DESCRIPTIONS = (
         key="battery_force_charge_requested",
         translation_key="battery_force_charge_requested",
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(
             data.get("bms_force_charge_requested") or data.get("forced_charge_request")
         ),
@@ -264,6 +267,7 @@ BINARY_SENSOR_DESCRIPTIONS = (
         key="battery_balance_charge_requested",
         translation_key="battery_balance_charge_requested",
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(data.get("bms_balance_charge_requested")),
     ),
     FH3XBinarySensorEntityDescription(
@@ -271,6 +275,7 @@ BINARY_SENSOR_DESCRIPTIONS = (
         translation_key="battery_low_soc",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
         is_on_fn=lambda data: bool(data.get("bms_low_soc")),
     ),
 )
