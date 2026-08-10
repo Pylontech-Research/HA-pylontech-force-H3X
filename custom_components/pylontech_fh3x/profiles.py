@@ -74,6 +74,17 @@ BASIC_CONTROL_KEYS = frozenset(
     }
 )
 
+ENERGY_CONTROL_KEYS = frozenset(
+    {
+        "ems_mode",
+        "charge_discharge_power_reference",
+        "charge_limit_soc",
+        "eps_limit_soc_on_grid",
+        "eps_limit_soc_off_grid",
+        "eps_enabled",
+    }
+)
+
 CONTROL_DOMAINS = frozenset({"number", "select", "switch", "time"})
 
 
@@ -99,8 +110,14 @@ def profile_sensor_description(description: Any, profile: str) -> Any:
 
 def profile_control_description(description: Any, profile: str) -> Any:
     """Enable control descriptions only after the user opts into a control tier."""
-    enabled = profile == CONTROL_PROFILE_ADVANCED or (
-        profile == CONTROL_PROFILE_BASIC and description.key in BASIC_CONTROL_KEYS
+    enabled = (
+        description.key in ENERGY_CONTROL_KEYS
+        or description.key.startswith("period_")
+        or profile == CONTROL_PROFILE_ADVANCED
+        or (
+            profile == CONTROL_PROFILE_BASIC
+            and description.key in BASIC_CONTROL_KEYS
+        )
     )
     return replace(description, entity_registry_enabled_default=enabled)
 
@@ -149,7 +166,12 @@ def apply_profiles_to_registry(
             )
         elif domain in CONTROL_DOMAINS:
             enabled = control_profile == CONTROL_PROFILE_ADVANCED or (
-                control_profile == CONTROL_PROFILE_BASIC and key in BASIC_CONTROL_KEYS
+                key in ENERGY_CONTROL_KEYS
+                or key.startswith("period_")
+                or (
+                    control_profile == CONTROL_PROFILE_BASIC
+                    and key in BASIC_CONTROL_KEYS
+                )
             )
         else:
             continue

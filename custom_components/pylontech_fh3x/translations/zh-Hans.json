@@ -47,7 +47,7 @@
           "scan_interval": "两次读取之间的秒数，最小为 5 秒。",
           "detailed_bms": "读取全部可用模块和电芯的电压、温度；会增加多次 Modbus 请求及大量默认禁用的诊断实体。",
           "entity_profile": "compact 为关键能源数据；standard 增加三相、分路光伏、电池和 EPS 常用数据；engineering 开放全部支持点位。",
-          "control_profile": "read_only 不开放写实体；basic 仅开放 EMS、手动功率、SOC 和 EPS；advanced 才开放计划时段、削峰及全部本地控制。"
+          "control_profile": "EMS 和计划时段等能量管理控制默认开放；advanced 额外开放削峰、热泵及全部支持的本地控制。"
         }
       }
     }

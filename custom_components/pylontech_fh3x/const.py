@@ -36,7 +36,10 @@ DEFAULT_DETAILED_BMS = False
 # the system-level power, energy and health entities.  Per-string, per-phase,
 # cell/module and engineering values remain available through the options flow.
 DEFAULT_ENTITY_PROFILE = ENTITY_PROFILE_COMPACT
-DEFAULT_CONTROL_PROFILE = CONTROL_PROFILE_READ_ONLY
+# Energy-management controls are useful for commissioning and simulator
+# testing.  Keep unrelated engineering controls (peak shaving and heat pump)
+# opt-in, while exposing EMS and schedule controls by default.
+DEFAULT_CONTROL_PROFILE = CONTROL_PROFILE_BASIC
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 300
 

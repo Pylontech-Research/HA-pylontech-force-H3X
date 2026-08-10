@@ -188,8 +188,8 @@ class FH3XOptionsFlow(OptionsFlowWithReload):
                         CONF_CONTROL_PROFILE, default=control_profile
                     ): vol.In(
                         {
-                            CONTROL_PROFILES[0]: "Read only (recommended)",
-                            CONTROL_PROFILES[1]: "Basic controls",
+                            CONTROL_PROFILES[0]: "Energy controls only",
+                            CONTROL_PROFILES[1]: "Energy and basic controls",
                             CONTROL_PROFILES[2]: "Advanced controls and schedules",
                         }
                     ),
