@@ -213,7 +213,7 @@ class FH3XModbusClient:
                     PCS_DEVICE_ID,
                     allow_input_fallback=False,
                 )
-            except FH3XProtocolError as err:
+            except FH3XError as err:
                 _LOGGER.debug(
                     "FH3X control block at %s is unavailable: %s", address, err
                 )
@@ -229,7 +229,7 @@ class FH3XModbusClient:
                 PCS_MONITOR_EXT_COUNT,
                 PCS_DEVICE_ID,
             )
-        except FH3XProtocolError as err:
+        except FH3XError as err:
             _LOGGER.debug("FH3X extended monitor block is unavailable: %s", err)
             return {}
         return decode_pcs_monitor_ext(registers)
@@ -251,7 +251,7 @@ class FH3XModbusClient:
                     count,
                     BMS_DEVICE_ID,
                 )
-            except FH3XProtocolError as err:
+            except FH3XError as err:
                 _LOGGER.debug(
                     "FH3X detailed BMS block at %s is unavailable: %s",
                     address,
@@ -395,7 +395,7 @@ class FH3XModbusClient:
                         PCS_DEVICE_INFO_EXT_COUNT,
                         PCS_DEVICE_ID,
                     )
-                except FH3XProtocolError as err:
+                except FH3XError as err:
                     _LOGGER.debug(
                         "FH3X extended device information is unavailable: %s", err
                     )
@@ -407,7 +407,7 @@ class FH3XModbusClient:
                         BMS_DEVICE_INFO_COUNT,
                         BMS_DEVICE_ID,
                     )
-                except FH3XProtocolError as err:
+                except FH3XError as err:
                     _LOGGER.debug("FH3X BMS device information is unavailable: %s", err)
                 else:
                     self._device_values.update(
