@@ -65,6 +65,7 @@
       "grid_import_energy": {"name": "电网购电量"},
       "grid_export_energy": {"name": "电网馈电量"},
       "battery_charge_energy": {"name": "电池累计充电量"},
+      "battery_charge_energy_from_ac": {"name": "电池交流侧充电量"},
       "battery_discharge_energy": {"name": "电池累计放电量"},
       "bms_soh": {"name": "电池健康度"},
       "bms_cycles": {"name": "电池循环次数"},

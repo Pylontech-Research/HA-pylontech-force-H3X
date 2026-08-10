@@ -65,6 +65,7 @@
       "grid_import_energy": {"name": "Grid import energy"},
       "grid_export_energy": {"name": "Grid export energy"},
       "battery_charge_energy": {"name": "Battery charge energy"},
+      "battery_charge_energy_from_ac": {"name": "Battery charge energy from AC"},
       "battery_discharge_energy": {"name": "Battery discharge energy"},
       "bms_soh": {"name": "Battery state of health"},
       "bms_cycles": {"name": "Battery cycles"},
