@@ -42,6 +42,7 @@ decode_internal_controls = PROTOCOL.decode_internal_controls
 decode_peak_shaving_controls = PROTOCOL.decode_peak_shaving_controls
 decode_pcs = PROTOCOL.decode_pcs
 decode_pcs_monitor_ext = PROTOCOL.decode_pcs_monitor_ext
+update_u16_bit = PROTOCOL.update_u16_bit
 
 
 def _put_ascii(registers: list[int], offset: int, count: int, value: str) -> None:
@@ -68,6 +69,22 @@ def _put_float32(registers: list[int], offset: int, value: float) -> None:
 
 class TestFH3XProtocol(unittest.TestCase):
     """Verify protocol decoding and sign conventions."""
+
+    def test_u16_bit_updates_preserve_other_weekdays(self) -> None:
+        weekday_mask = 0
+        weekday_mask = update_u16_bit(weekday_mask, 1, True)
+        weekday_mask = update_u16_bit(weekday_mask, 2, True)
+        weekday_mask = update_u16_bit(weekday_mask, 5, True)
+        self.assertEqual(weekday_mask, 0b0100110)
+
+        weekday_mask = update_u16_bit(weekday_mask, 2, False)
+        self.assertEqual(weekday_mask, 0b0100010)
+
+    def test_u16_bit_update_rejects_invalid_inputs(self) -> None:
+        with self.assertRaises(ValueError):
+            update_u16_bit(-1, 0, True)
+        with self.assertRaises(ValueError):
+            update_u16_bit(0, 16, True)
 
     def test_total_increasing_guard_rejects_one_bad_sample(self) -> None:
         guard = TotalIncreasingGuard()

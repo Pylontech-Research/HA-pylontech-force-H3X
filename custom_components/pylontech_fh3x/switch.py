@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -23,6 +24,7 @@ class FH3XSwitchEntityDescription(SwitchEntityDescription):
     register_address: int
     data_key: str | None = None
     bit_index: int | None = None
+    schedule_period: int | None = None
 
 
 SWITCH_DESCRIPTIONS = (
@@ -35,42 +37,40 @@ SWITCH_DESCRIPTIONS = (
     FH3XSwitchEntityDescription(
         key="heat_pump_enabled",
         translation_key="heat_pump_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40848,
     ),
     FH3XSwitchEntityDescription(
         key="period_1_enabled",
         translation_key="period_1_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40908,
+        schedule_period=1,
     ),
     FH3XSwitchEntityDescription(
         key="period_2_enabled",
         translation_key="period_2_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40914,
+        schedule_period=2,
     ),
     FH3XSwitchEntityDescription(
         key="period_3_enabled",
         translation_key="period_3_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40920,
+        schedule_period=3,
     ),
     FH3XSwitchEntityDescription(
         key="period_4_enabled",
         translation_key="period_4_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40926,
+        schedule_period=4,
     ),
     FH3XSwitchEntityDescription(
         key="peak_shaving_enabled",
         translation_key="peak_shaving_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40973,
     ),
@@ -138,18 +138,32 @@ class FH3XSwitch(FH3XCoordinatorEntity, SwitchEntity):
             return bool(value & (1 << description.bit_index))
         return value if isinstance(value, bool) else None
 
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Expose the configured schedule behind a compact enable switch."""
+        period = self.entity_description.schedule_period
+        if period is None:
+            return None
+        values = self.coordinator.data.values
+        return {
+            "mode": values.get(f"period_{period}_mode"),
+            "power_percent": values.get(f"period_{period}_power"),
+            "start_time": values.get(f"period_{period}_start"),
+            "end_time": values.get(f"period_{period}_end"),
+            "weekdays": values.get(f"period_{period}_weekdays"),
+        }
+
     async def _async_set_state(self, enabled: bool) -> None:
         description = self.entity_description
         if description.bit_index is None:
             await self._async_write_u16(description.register_address, int(enabled))
             return
 
-        current = self.coordinator.data.values.get(description.data_key or "")
-        if not isinstance(current, int):
-            return
-        mask = 1 << description.bit_index
-        value = current | mask if enabled else current & ~mask
-        await self._async_write_u16(description.register_address, value)
+        await self._async_update_u16_bit(
+            description.register_address,
+            description.bit_index,
+            enabled,
+        )
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         await self._async_set_state(True)

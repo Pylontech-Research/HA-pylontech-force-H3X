@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import TypeAlias
 
@@ -19,7 +20,10 @@ from .const import (
     DEFAULT_ENTITY_PROFILE,
 )
 from .coordinator import FH3XCoordinator
-from .profiles import apply_profiles_to_registry
+from .profiles import (
+    apply_profiles_to_registry,
+    async_apply_english_names_to_registry,
+)
 
 PLATFORMS = [
     Platform.SENSOR,
@@ -42,16 +46,24 @@ class FH3XRuntimeData:
 FH3XConfigEntry: TypeAlias = ConfigEntry[FH3XRuntimeData]
 
 
+async def _async_apply_english_names_after_platform_setup(
+    hass: HomeAssistant,
+    entry: FH3XConfigEntry,
+) -> None:
+    """Apply names after HA has finished persisting platform entity metadata."""
+    await asyncio.sleep(1)
+    await async_apply_english_names_to_registry(hass, entry)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool:
     """Set up an FH3X from a config entry."""
     entity_profile = entry.options.get(CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE)
-    control_profile = entry.options.get(
-        CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE
-    )
+    control_profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     # Apply the profile before touching the network. Existing installations
     # must still get a cleaned-up device page when the inverter is offline and
     # the first coordinator refresh enters setup retry.
     apply_profiles_to_registry(hass, entry, entity_profile, control_profile)
+    await async_apply_english_names_to_registry(hass, entry)
 
     client = FH3XModbusClient(
         host=entry.data[CONF_HOST],
@@ -71,6 +83,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool
         entry,
         entity_profile,
         control_profile,
+    )
+    # Platform entity registration can persist the system-language original
+    # name after async_forward_entry_setups returns. Run the final migration on
+    # the next settled event-loop turn so it remains authoritative.
+    hass.async_create_task(
+        _async_apply_english_names_after_platform_setup(hass, entry),
+        "Apply FH3X English entity names",
     )
     return True
 

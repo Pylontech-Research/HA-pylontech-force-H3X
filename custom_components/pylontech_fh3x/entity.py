@@ -64,3 +64,11 @@ class FH3XCoordinatorEntity(CoordinatorEntity[FH3XCoordinator]):
             await self.coordinator.async_write_s32(address, value)
         except FH3XError as err:
             raise HomeAssistantError(f"FH3X rejected the setting: {err}") from err
+
+    async def _async_update_u16_bit(
+        self, address: int, bit_index: int, enabled: bool
+    ) -> None:
+        try:
+            await self.coordinator.async_update_u16_bit(address, bit_index, enabled)
+        except FH3XError as err:
+            raise HomeAssistantError(f"FH3X rejected the setting: {err}") from err

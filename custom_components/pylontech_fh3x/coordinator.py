@@ -68,3 +68,11 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
         async with self._write_lock:
             await self.client.async_write_s32(address, value)
             await self.async_refresh()
+
+    async def async_update_u16_bit(
+        self, address: int, bit_index: int, enabled: bool
+    ) -> None:
+        """Update one bit from the latest device value and refresh all entities."""
+        async with self._write_lock:
+            await self.client.async_update_u16_bit(address, bit_index, enabled)
+            await self.async_refresh()

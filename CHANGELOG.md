@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.6.11 - 2026-08-11
+
+- Store the selected English entity label in Home Assistant's supported
+  display-name field so the frontend updates immediately. Existing user-set
+  names remain untouched.
+
+## 0.6.10 - 2026-08-11
+
+- Deferred the final English entity-name migration until Home Assistant has
+  finished persisting platform metadata, preventing system-language defaults
+  from overwriting the selected English names during setup.
+
+## 0.6.9 - 2026-08-11
+
+- Standardized FH3X entity names on the integration's English translations,
+  including schedule-period placeholders, while preserving user-renamed
+  entities, entity IDs, history and automation references.
+- Applied the naming policy both before network setup for existing/offline
+  devices and after platform setup for newly created entities.
+
+## 0.6.8 - 2026-08-11
+
+- Renamed the Simplified Chinese EPS control to "应急输出 (EPS)" and migrated
+  its persisted default name. Together with "工作模式 (EMS)", this keeps EMS
+  first under both Chinese and English frontend sorting rules.
+
+## 0.6.7 - 2026-08-11
+
+- Renamed the Simplified Chinese EMS control to "工作模式 (EMS)" so Home
+  Assistant's locale-aware device-page sorting keeps it ahead of schedule and
+  EPS controls. The entity unique ID and Modbus register remain unchanged.
+- Migrated the previously persisted Simplified Chinese default name without
+  changing user-renamed entities or names created under other system locales.
+
+## 0.6.6 - 2026-08-11
+
+- Reorganized writable entities using Home Assistant's Controls and
+  Configuration sections: EMS, EPS and four schedule enables are daily
+  controls; common SOC/manual-power settings remain default configuration.
+- Moved complete schedule details, peak shaving, heat-pump and export settings
+  behind the advanced control profile, reducing the default Configuration
+  section from 52 entities to 4.
+- Added period configuration summaries to the four schedule enable switches.
+- Changed weekday writes to a locked device read-modify-write operation so
+  rapid changes preserve other selected days.
+- Kept existing profile values, entity unique IDs and Modbus addresses intact.
+
 ## 0.6.0 - 2026-08-07
 
 - Made the compact, read-only entity profile the recommended default.

@@ -26,10 +26,10 @@ No cloud account is required.
   diagnostics when supported by the device firmware.
 - Optional BMS single-pile, per-module and per-cell voltage/temperature data.
 
-Writable entities are disabled by default. Enable only the settings you need from
-**Settings → Devices & services → Pylontech Force H3X → Entities**. Every command
-is serialized with polling, written to the PCS at device ID `2`, read back for
-verification, and followed by a complete coordinator refresh.
+The recommended control profile exposes six daily controls and four common
+numeric settings. Complete schedules and engineering controls remain opt-in.
+Every command is serialized with polling, written to the PCS at device ID `2`,
+read back for verification, and followed by a complete coordinator refresh.
 
 The Integration options provide two independent visibility profiles:
 
@@ -38,16 +38,16 @@ The Integration options provide two independent visibility profiles:
   power, cumulative energy, SOC/SOH, operating state and four aggregate alarm
   entities. PV strings, phases, temperatures, cells and raw protocol values are
   opt-in.
-- Control exposure: **Read only**, **Basic controls** or **Advanced controls**.
-  Read only is the default. Basic adds EMS, manual power, SOC and EPS; schedules,
-  peak shaving and engineering settings require Advanced. Selecting a writable
-  tier is an explicit opt-in and updates existing entity registry entries as
-  well as new installations.
+- Control exposure: **Daily controls only**, **Daily controls and common
+  settings**, or **Advanced controls and full schedules**. The common-settings
+  tier is the default. All tiers show EMS, EPS and the four period enable
+  switches. The default adds manual power and three SOC limits. Advanced adds
+  complete period details, peak shaving, heat-pump and export settings.
 
-Basic controls use native Home Assistant UI types: enum selectors for EMS and
-charge/discharge mode, time pickers for schedule boundaries, enable switches,
-and sliders for SOC and schedule power. Advanced mode additionally exposes raw
-signed power, export limit, heat-pump and individual weekday-bit controls.
+Controls use native Home Assistant UI types. Operating modes and enable switches
+appear in the device Controls section; numeric thresholds, time pickers and
+weekday settings appear under Configuration. Each period enable switch includes
+its current mode, power, time range and weekdays as state attributes.
 
 ## Controls and safety
 
@@ -65,6 +65,9 @@ protocol decoder and connection layer:
 - Heat-pump output.
 - Schedule periods 1–4: enable, start/end time, charge/discharge mode, power and
   individual weekdays.
+
+Weekday changes use a locked read-modify-write operation against the latest PCS
+register value, so rapid changes do not overwrite other selected days.
 
 Do not change a control unless its effect is understood and the range matches
 the rated power and operating rules of your installation. Active schedule

@@ -47,7 +47,7 @@
           "scan_interval": "Seconds between device polls. Minimum: 5 seconds.",
           "detailed_bms": "Read every available module and cell voltage/temperature. This adds several Modbus requests and many disabled diagnostic entities.",
           "entity_profile": "compact = essential energy data; standard = useful phase, PV, battery and EPS values; engineering = every supported point.",
-          "control_profile": "Energy-management controls (EMS and schedules) are available by default; advanced also exposes peak shaving, heat-pump and every supported local control."
+          "control_profile": "Daily controls show EMS, EPS and four schedule enable switches. Common settings add manual power and SOC limits. Advanced exposes complete schedule details, peak shaving, heat-pump and export settings."
         }
       }
     }

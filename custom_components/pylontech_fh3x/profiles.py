@@ -2,21 +2,19 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import replace
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_registry import RegistryEntryDisabler
+from homeassistant.helpers.translation import async_get_translations
 
-from .const import (
-    CONTROL_PROFILE_ADVANCED,
-    CONTROL_PROFILE_BASIC,
-    ENTITY_PROFILE_ENGINEERING,
-    ENTITY_PROFILE_STANDARD,
-    DOMAIN,
-)
+from .const import DOMAIN, ENTITY_PROFILE_ENGINEERING, ENTITY_PROFILE_STANDARD
+from .exposure import control_enabled, is_primary_control
 
 STANDARD_SENSOR_KEYS = frozenset(
     {
@@ -63,28 +61,6 @@ CORE_BINARY_SENSOR_KEYS = frozenset(
     }
 )
 
-BASIC_CONTROL_KEYS = frozenset(
-    {
-        "ems_mode",
-        "charge_discharge_power_reference",
-        "charge_limit_soc",
-        "eps_limit_soc_on_grid",
-        "eps_limit_soc_off_grid",
-        "eps_enabled",
-    }
-)
-
-ENERGY_CONTROL_KEYS = frozenset(
-    {
-        "ems_mode",
-        "charge_discharge_power_reference",
-        "charge_limit_soc",
-        "eps_limit_soc_on_grid",
-        "eps_limit_soc_off_grid",
-        "eps_enabled",
-    }
-)
-
 CONTROL_DOMAINS = frozenset({"number", "select", "switch", "time"})
 
 
@@ -105,17 +81,14 @@ def profile_sensor_description(description: Any, profile: str) -> Any:
 
 
 def profile_control_description(description: Any, profile: str) -> Any:
-    """Enable control descriptions only after the user opts into a control tier."""
-    enabled = (
-        description.key in ENERGY_CONTROL_KEYS
-        or description.key.startswith("period_")
-        or profile == CONTROL_PROFILE_ADVANCED
-        or (
-            profile == CONTROL_PROFILE_BASIC
-            and description.key in BASIC_CONTROL_KEYS
-        )
+    """Apply the selected visibility and device-page section to a control."""
+    return replace(
+        description,
+        entity_category=(
+            None if is_primary_control(description.key) else EntityCategory.CONFIG
+        ),
+        entity_registry_enabled_default=control_enabled(description.key, profile),
     )
-    return replace(description, entity_registry_enabled_default=enabled)
 
 
 def _entity_key(unique_id: str, entry_unique_id: str | None) -> str | None:
@@ -123,6 +96,48 @@ def _entity_key(unique_id: str, entry_unique_id: str | None) -> str | None:
         return None
     prefix = f"{entry_unique_id}_"
     return unique_id[len(prefix) :] if unique_id.startswith(prefix) else None
+
+
+def _format_english_entity_name(key: str, template: str) -> str | None:
+    """Fill the supported entity-name placeholders from its stable key."""
+    if "{period}" not in template:
+        return template
+    if not (match := re.match(r"period_(\d+)_", key)):
+        return None
+    return template.format(period=match.group(1))
+
+
+async def async_apply_english_names_to_registry(
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+) -> None:
+    """Use the integration's English names for every non-user-renamed entity."""
+    translations = await async_get_translations(
+        hass,
+        "en",
+        "entity",
+        integrations=[DOMAIN],
+    )
+    registry = er.async_get(hass)
+    for entry in er.async_entries_for_config_entry(registry, config_entry.entry_id):
+        if entry.platform != DOMAIN or entry.name is not None:
+            continue
+        key = _entity_key(entry.unique_id, config_entry.unique_id)
+        if key is None or entry.translation_key is None:
+            continue
+        domain = entry.entity_id.split(".", 1)[0]
+        translation_id = (
+            f"component.{DOMAIN}.entity.{domain}.{entry.translation_key}.name"
+        )
+        if not (template := translations.get(translation_id)):
+            continue
+        if not (english_name := _format_english_entity_name(key, template)):
+            continue
+        if entry.name != english_name:
+            registry.async_update_entity(
+                entry.entity_id,
+                name=english_name,
+            )
 
 
 def apply_profiles_to_registry(
@@ -161,24 +176,24 @@ def apply_profiles_to_registry(
                 or entity_profile == ENTITY_PROFILE_ENGINEERING
             )
         elif domain in CONTROL_DOMAINS:
-            enabled = control_profile == CONTROL_PROFILE_ADVANCED or (
-                key in ENERGY_CONTROL_KEYS
-                or key.startswith("period_")
-                or (
-                    control_profile == CONTROL_PROFILE_BASIC
-                    and key in BASIC_CONTROL_KEYS
-                )
+            enabled = control_enabled(key, control_profile)
+            desired_category = (
+                None if is_primary_control(key) else EntityCategory.CONFIG
             )
         else:
             continue
+
+        updates: dict[str, Any] = {}
+        if domain in CONTROL_DOMAINS and entry.entity_category != desired_category:
+            updates["entity_category"] = desired_category
 
         if enabled:
             # Enabling a profile may restore entities disabled by this
             # integration, but must never undo a user's explicit choice.
             if entry.disabled_by == RegistryEntryDisabler.INTEGRATION:
-                registry.async_update_entity(entry.entity_id, disabled_by=None)
-        elif entry.disabled_by != RegistryEntryDisabler.USER:
-            registry.async_update_entity(
-                entry.entity_id,
-                disabled_by=RegistryEntryDisabler.INTEGRATION,
-            )
+                updates["disabled_by"] = None
+        elif entry.disabled_by in {None, RegistryEntryDisabler.INTEGRATION}:
+            updates["disabled_by"] = RegistryEntryDisabler.INTEGRATION
+
+        if updates:
+            registry.async_update_entity(entry.entity_id, **updates)

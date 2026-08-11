@@ -53,6 +53,7 @@ from .protocol import (
     decode_pcs,
     decode_pcs_monitor_ext,
     decode_peak_shaving_controls,
+    update_u16_bit,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -359,9 +360,7 @@ class FH3XModbusClient:
             self._identity = identity
             return identity
 
-    def _identity_with_address_fallback(
-        self, identity: FH3XIdentity
-    ) -> FH3XIdentity:
+    def _identity_with_address_fallback(self, identity: FH3XIdentity) -> FH3XIdentity:
         """Create a stable identity when firmware leaves identity registers empty."""
         fallback_serial = f"modbus-{self.host}:{self.port}"
         _LOGGER.warning(
@@ -472,6 +471,27 @@ class FH3XModbusClient:
         registers = [(encoded >> 16) & 0xFFFF, encoded & 0xFFFF]
         async with self._lock:
             await self._async_write_and_verify(address, registers, device_id)
+
+    async def async_update_u16_bit(
+        self,
+        address: int,
+        bit_index: int,
+        enabled: bool,
+        device_id: int = PCS_DEVICE_ID,
+    ) -> None:
+        """Read, update and verify one U16 bit without losing concurrent changes."""
+        async with self._lock:
+            current = (
+                await self._async_read_registers(
+                    address,
+                    1,
+                    device_id,
+                    allow_input_fallback=False,
+                )
+            )[0]
+            updated = update_u16_bit(current, bit_index, enabled)
+            if updated != current:
+                await self._async_write_and_verify(address, [updated], device_id)
 
     async def async_close(self) -> None:
         """Close the underlying connection."""

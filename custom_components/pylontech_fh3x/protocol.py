@@ -42,6 +42,17 @@ BMS_CELL_TEMPERATURE_OFFSET = 0x400
 
 FH3XValue = int | float | str
 
+
+def update_u16_bit(value: int, bit_index: int, enabled: bool) -> int:
+    """Return a U16 value with one bit updated and all other bits preserved."""
+    if not 0 <= value <= 0xFFFF:
+        raise ValueError(f"U16 value out of range: {value}")
+    if not 0 <= bit_index <= 15:
+        raise ValueError(f"U16 bit index out of range: {bit_index}")
+    mask = 1 << bit_index
+    return value | mask if enabled else value & ~mask
+
+
 # Values exposed with SensorStateClass.TOTAL_INCREASING.  Some PCS firmware can
 # return a single torn Float32 read while the counter is changing.  Passing that
 # one-off regression to Home Assistant makes Recorder interpret it as a meter
@@ -86,11 +97,7 @@ class TotalIncreasingGuard:
             if not isinstance(value, int | float):
                 continue
 
-            if (
-                not math.isfinite(value)
-                or value < 0
-                or value > self.MAX_TOTAL_KWH
-            ):
+            if not math.isfinite(value) or value < 0 or value > self.MAX_TOTAL_KWH:
                 previous = self._last.get(key)
                 if previous is None:
                     values.pop(key, None)

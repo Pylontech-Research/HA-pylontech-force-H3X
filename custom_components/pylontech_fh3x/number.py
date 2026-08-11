@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -183,6 +184,22 @@ class FH3XNumber(FH3XCoordinatorEntity, NumberEntity):
             or self.coordinator.data.values.get("ems_mode")
             == description.required_ems_mode
         )
+
+    @property
+    def extra_state_attributes(self) -> Mapping[str, Any] | None:
+        """Explain the prerequisite for mode-dependent settings."""
+        description = self.entity_description
+        if description.required_ems_mode is None:
+            return None
+        current_mode = self.coordinator.data.values.get("ems_mode")
+        return {
+            "required_ems_mode": "user",
+            "control_unavailable_reason": (
+                None
+                if current_mode == description.required_ems_mode
+                else "Set EMS mode to User before changing this setting."
+            ),
+        }
 
     @property
     def native_max_value(self) -> float:

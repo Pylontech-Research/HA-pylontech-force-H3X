@@ -2,6 +2,12 @@
 
 from datetime import timedelta
 
+from .exposure import (
+    CONTROL_PROFILE_ADVANCED,
+    CONTROL_PROFILE_BASIC,
+    CONTROL_PROFILE_DAILY,
+)
+
 DOMAIN = "pylontech_fh3x"
 
 CONF_SCAN_INTERVAL = "scan_interval"
@@ -18,9 +24,7 @@ ENTITY_PROFILES = (
     ENTITY_PROFILE_ENGINEERING,
 )
 
-CONTROL_PROFILE_READ_ONLY = "read_only"
-CONTROL_PROFILE_BASIC = "basic"
-CONTROL_PROFILE_ADVANCED = "advanced"
+CONTROL_PROFILE_READ_ONLY = CONTROL_PROFILE_DAILY
 CONTROL_PROFILES = (
     CONTROL_PROFILE_READ_ONLY,
     CONTROL_PROFILE_BASIC,
@@ -36,9 +40,8 @@ DEFAULT_DETAILED_BMS = False
 # the system-level power, energy and health entities.  Per-string, per-phase,
 # cell/module and engineering values remain available through the options flow.
 DEFAULT_ENTITY_PROFILE = ENTITY_PROFILE_COMPACT
-# Energy-management controls are useful for commissioning and simulator
-# testing.  Keep unrelated engineering controls (peak shaving and heat pump)
-# opt-in, while exposing EMS and schedule controls by default.
+# Daily controls plus four common numeric settings are the recommended balance.
+# Complete schedules and engineering controls remain explicitly opt-in.
 DEFAULT_CONTROL_PROFILE = CONTROL_PROFILE_BASIC
 MIN_SCAN_INTERVAL = 5
 MAX_SCAN_INTERVAL = 300

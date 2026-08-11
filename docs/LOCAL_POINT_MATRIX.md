@@ -13,9 +13,9 @@ OTA features are intentionally excluded.
 | PCS live monitor | 2 | 30100–30198 | Implemented | PV, AC, grid, battery, EPS, energy, three-phase and diagnostic values |
 | PCS extended monitor | 2 | 30600–30669 | Optional, implemented | Backup/EPS phases, parallel-system totals, meter and flow energy |
 | Active power control | 2 | 40400–40402 | Implemented | Mode readback and export-limit control |
-| Internal heat-pump control | 2 | 40848 | Implemented | Disabled-by-default switch |
-| EMS and four periods | 2 | 40901–40931 | Implemented | EMS/SOC plus full period enable/time/mode/power/weekday controls |
-| Peak shaving | 2 | 40973–40975 | Implemented | Enable, safety SOC and meter power limit controls |
+| Internal heat-pump control | 2 | 40848 | Implemented | Advanced Controls switch |
+| EMS and four periods | 2 | 40901–40931 | Implemented | EMS/EPS and period enable switches are daily Controls; full period details are Advanced Configuration |
+| Peak shaving | 2 | 40973–40975 | Implemented | Advanced Controls switch plus Advanced Configuration limits |
 | BMS equipment information | 1 | 0x1000–0x101E | Optional, implemented | BMS type/model/version and parallel information |
 | BMS aggregate system | 1 | 0x1100–0x114E | Implemented | SOC/SOH, limits, energy, extrema, channels, flags and alarms |
 | BMS single-pile header | 1 | 0x1400–0x145F | Optional, implemented | Pile identity and summary when detailed BMS is enabled |
