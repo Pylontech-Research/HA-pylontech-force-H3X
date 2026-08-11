@@ -75,18 +75,22 @@ TOTAL_INCREASING_KEYS = frozenset(
 class TotalIncreasingGuard:
     """Reject isolated cumulative-meter regressions and implausible jumps.
 
-    A genuine device reset is accepted after the new, lower baseline is seen
-    in two consecutive polls.  The first lower sample is held back so a torn
-    two-register read cannot corrupt Home Assistant long-term statistics.  A
-    large increase is handled the same way: it must be repeated by the next
-    poll before it is accepted.
+    A baseline is not published until it is confirmed by a second poll.  This
+    prevents a bad first read after an integration reload from becoming the
+    Recorder baseline.  A genuine device reset is accepted after the new,
+    lower baseline is seen in two consecutive polls.  The first lower sample
+    is held back so a torn two-register read cannot corrupt Home Assistant
+    long-term statistics.  A large increase is handled the same way: it must
+    be repeated by the next poll before it is accepted.
     """
 
     MAX_TOTAL_KWH = 1_000_000_000
     MAX_UNCONFIRMED_CHANGE_KWH = 10
+    INITIAL_CONFIRM_TOLERANCE_KWH = 1
 
     def __init__(self) -> None:
         self._last: dict[str, int | float] = {}
+        self._initial_candidate: dict[str, int | float] = {}
         self._reset_candidate: dict[str, int | float] = {}
         self._increase_candidate: dict[str, int | float] = {}
 
@@ -107,9 +111,19 @@ class TotalIncreasingGuard:
 
             previous = self._last.get(key)
             if previous is None:
-                self._last[key] = value
-                self._reset_candidate.pop(key, None)
-                self._increase_candidate.pop(key, None)
+                candidate = self._initial_candidate.get(key)
+                if (
+                    candidate is not None
+                    and abs(value - candidate) <= self.INITIAL_CONFIRM_TOLERANCE_KWH
+                ):
+                    self._last[key] = value
+                    self._initial_candidate.pop(key, None)
+                    self._reset_candidate.pop(key, None)
+                    self._increase_candidate.pop(key, None)
+                    continue
+
+                self._initial_candidate[key] = value
+                values.pop(key, None)
                 continue
 
             if value >= previous:

@@ -70,6 +70,17 @@ def _put_float32(registers: list[int], offset: int, value: float) -> None:
 class TestFH3XProtocol(unittest.TestCase):
     """Verify protocol decoding and sign conventions."""
 
+    def _prime_total_guard(
+        self, guard: TotalIncreasingGuard, key: str, value: float
+    ) -> None:
+        first = {key: value}
+        guard.apply(first)
+        self.assertNotIn(key, first)
+
+        confirmed = {key: value}
+        guard.apply(confirmed)
+        self.assertEqual(confirmed[key], value)
+
     def test_u16_bit_updates_preserve_other_weekdays(self) -> None:
         weekday_mask = 0
         weekday_mask = update_u16_bit(weekday_mask, 1, True)
@@ -88,8 +99,7 @@ class TestFH3XProtocol(unittest.TestCase):
 
     def test_total_increasing_guard_rejects_one_bad_sample(self) -> None:
         guard = TotalIncreasingGuard()
-        values = {"battery_charge_energy": 107.488}
-        guard.apply(values)
+        self._prime_total_guard(guard, "battery_charge_energy", 107.488)
 
         torn_read = {"battery_charge_energy": 60.249}
         guard.apply(torn_read)
@@ -101,7 +111,7 @@ class TestFH3XProtocol(unittest.TestCase):
 
     def test_total_increasing_guard_accepts_confirmed_reset(self) -> None:
         guard = TotalIncreasingGuard()
-        guard.apply({"grid_import_energy": 132.5})
+        self._prime_total_guard(guard, "grid_import_energy", 132.5)
 
         first_reset_sample = {"grid_import_energy": 0.0}
         guard.apply(first_reset_sample)
@@ -113,7 +123,7 @@ class TestFH3XProtocol(unittest.TestCase):
 
     def test_total_increasing_guard_rejects_one_huge_increase(self) -> None:
         guard = TotalIncreasingGuard()
-        guard.apply({"pv_total_energy": 71.235})
+        self._prime_total_guard(guard, "pv_total_energy", 71.235)
 
         torn_read = {"pv_total_energy": 1.3168603261118859e34}
         guard.apply(torn_read)
@@ -125,7 +135,7 @@ class TestFH3XProtocol(unittest.TestCase):
 
     def test_total_increasing_guard_accepts_confirmed_large_increase(self) -> None:
         guard = TotalIncreasingGuard()
-        guard.apply({"grid_import_energy": 100.0})
+        self._prime_total_guard(guard, "grid_import_energy", 100.0)
 
         first_sample = {"grid_import_energy": 125.0}
         guard.apply(first_sample)
@@ -134,6 +144,32 @@ class TestFH3XProtocol(unittest.TestCase):
         confirmed = {"grid_import_energy": 125.01}
         guard.apply(confirmed)
         self.assertEqual(confirmed["grid_import_energy"], 125.01)
+
+    def test_total_increasing_guard_confirms_initial_baseline(self) -> None:
+        guard = TotalIncreasingGuard()
+
+        first = {"pv_total_energy": 71.235}
+        guard.apply(first)
+        self.assertNotIn("pv_total_energy", first)
+
+        second = {"pv_total_energy": 71.236}
+        guard.apply(second)
+        self.assertEqual(second["pv_total_energy"], 71.236)
+
+    def test_total_increasing_guard_rejects_bad_zero_on_startup(self) -> None:
+        guard = TotalIncreasingGuard()
+
+        bad_first = {"pv_total_energy": 0.0}
+        guard.apply(bad_first)
+        self.assertNotIn("pv_total_energy", bad_first)
+
+        recovered = {"pv_total_energy": 71.236}
+        guard.apply(recovered)
+        self.assertNotIn("pv_total_energy", recovered)
+
+        confirmed = {"pv_total_energy": 71.236}
+        guard.apply(confirmed)
+        self.assertEqual(confirmed["pv_total_energy"], 71.236)
 
     def test_identity(self) -> None:
         registers = [0] * PCS_IDENTITY_COUNT
