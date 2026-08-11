@@ -158,6 +158,46 @@ SENSOR_DESCRIPTIONS: tuple[FH3XSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=2,
     ),
+    FH3XSensorEntityDescription(
+        key="battery_capacity",
+        translation_key="battery_capacity",
+        device_class=SensorDeviceClass.ENERGY_STORAGE,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
+    FH3XSensorEntityDescription(
+        key="home_load_energy",
+        translation_key="home_load_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        suggested_display_precision=2,
+    ),
+    FH3XSensorEntityDescription(
+        key="average_grid_voltage",
+        translation_key="average_grid_voltage",
+        device_class=SensorDeviceClass.VOLTAGE,
+        native_unit_of_measurement=UnitOfElectricPotential.VOLT,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    FH3XSensorEntityDescription(
+        key="average_grid_current",
+        translation_key="average_grid_current",
+        device_class=SensorDeviceClass.CURRENT,
+        native_unit_of_measurement=UnitOfElectricCurrent.AMPERE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+    ),
+    FH3XSensorEntityDescription(
+        key="grid_frequency",
+        translation_key="grid_frequency",
+        device_class=SensorDeviceClass.FREQUENCY,
+        native_unit_of_measurement=UnitOfFrequency.HERTZ,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+    ),
 )
 
 
@@ -243,13 +283,6 @@ DIAGNOSTIC_SENSOR_DESCRIPTIONS = (
         "grid_voltage_t",
         SensorDeviceClass.VOLTAGE,
         UnitOfElectricPotential.VOLT,
-    ),
-    _diagnostic_sensor(
-        "grid_frequency",
-        "grid_frequency",
-        SensorDeviceClass.FREQUENCY,
-        UnitOfFrequency.HERTZ,
-        2,
     ),
     _diagnostic_sensor(
         "battery_voltage",

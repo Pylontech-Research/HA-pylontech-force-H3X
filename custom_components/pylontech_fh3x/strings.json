@@ -69,6 +69,10 @@
       "bms_soh": {"name": "Battery state of health"},
       "bms_cycles": {"name": "Battery cycles"},
       "bms_remaining_energy": {"name": "Remaining battery energy"},
+      "battery_capacity": {"name": "Battery capacity"},
+      "home_load_energy": {"name": "Home load energy"},
+      "average_grid_voltage": {"name": "Average grid voltage"},
+      "average_grid_current": {"name": "Average grid current"},
       "pv1_voltage": {"name": "PV1 voltage"},
       "pv1_current": {"name": "PV1 current"},
       "pv1_power": {"name": "PV1 power"},
@@ -96,6 +100,7 @@
       "bms_cell_temperature_min": {"name": "Minimum cell temperature"}
     },
     "binary_sensor": {
+      "grid_connected": {"name": "Grid connected"},
       "inverter_fault": {"name": "Inverter fault"},
       "inverter_warning": {"name": "Inverter warning"},
       "bms_protection": {"name": "BMS protection"},

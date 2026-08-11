@@ -24,7 +24,6 @@ STANDARD_SENSOR_KEYS = frozenset(
         "grid_voltage_r",
         "grid_voltage_s",
         "grid_voltage_t",
-        "grid_frequency",
         "battery_voltage",
         "battery_current",
         "inverter_ambient_temperature",
@@ -44,6 +43,19 @@ STANDARD_SENSOR_KEYS = frozenset(
     }
 )
 
+# Tesla-style everyday energy context that must remain visible in every
+# exposure profile.  Keeping this explicit also migrates grid_frequency out of
+# its former diagnostic section for existing installations.
+CORE_SENSOR_KEYS = frozenset(
+    {
+        "battery_capacity",
+        "home_load_energy",
+        "average_grid_voltage",
+        "average_grid_current",
+        "grid_frequency",
+    }
+)
+
 # Keep vendor-specific counters out of the normal HA device page.  This key was
 # briefly promoted in v0.6.0, so handle it explicitly in case its persisted
 # registry entry no longer carries the original diagnostic category.
@@ -58,6 +70,7 @@ CORE_BINARY_SENSOR_KEYS = frozenset(
         "inverter_warning",
         "bms_protection",
         "bms_alarm",
+        "grid_connected",
     }
 )
 
@@ -157,7 +170,9 @@ def apply_profiles_to_registry(
             continue
 
         if domain == "sensor":
-            if key in ENGINEERING_SENSOR_KEYS:
+            if key in CORE_SENSOR_KEYS:
+                enabled = True
+            elif key in ENGINEERING_SENSOR_KEYS:
                 enabled = entity_profile == ENTITY_PROFILE_ENGINEERING
             else:
                 enabled = entity_profile == ENTITY_PROFILE_ENGINEERING or (
@@ -165,7 +180,8 @@ def apply_profiles_to_registry(
                     and key in STANDARD_SENSOR_KEYS
                 )
             if (
-                key not in STANDARD_SENSOR_KEYS
+                key not in CORE_SENSOR_KEYS
+                and key not in STANDARD_SENSOR_KEYS
                 and key not in ENGINEERING_SENSOR_KEYS
                 and entry.entity_category is None
             ):
@@ -184,6 +200,8 @@ def apply_profiles_to_registry(
             continue
 
         updates: dict[str, Any] = {}
+        if domain == "sensor" and key in CORE_SENSOR_KEYS and entry.entity_category:
+            updates["entity_category"] = None
         if domain in CONTROL_DOMAINS and entry.entity_category != desired_category:
             updates["entity_category"] = desired_category
 

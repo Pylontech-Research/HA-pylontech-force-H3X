@@ -34,6 +34,7 @@ decode_active_power_controls = PROTOCOL.decode_active_power_controls
 decode_bms = PROTOCOL.decode_bms
 decode_bms_detail_values = PROTOCOL.decode_bms_detail_values
 decode_bms_device_info = PROTOCOL.decode_bms_device_info
+decode_bms_load_energy = PROTOCOL.decode_bms_load_energy
 decode_bms_pile_header = PROTOCOL.decode_bms_pile_header
 decode_device_info_ext = PROTOCOL.decode_device_info_ext
 decode_energy_management_controls = PROTOCOL.decode_energy_management_controls
@@ -171,6 +172,21 @@ class TestFH3XProtocol(unittest.TestCase):
         guard.apply(confirmed)
         self.assertEqual(confirmed["pv_total_energy"], 71.236)
 
+    def test_home_load_energy_waits_for_confirmed_lifetime_baseline(self) -> None:
+        guard = TotalIncreasingGuard()
+
+        bad_zero = {"home_load_energy": 0.0}
+        guard.apply(bad_zero)
+        self.assertNotIn("home_load_energy", bad_zero)
+
+        lifetime_total = {"home_load_energy": 613.25}
+        guard.apply(lifetime_total)
+        self.assertNotIn("home_load_energy", lifetime_total)
+
+        confirmed = {"home_load_energy": 613.251}
+        guard.apply(confirmed)
+        self.assertEqual(confirmed["home_load_energy"], 613.251)
+
     def test_identity(self) -> None:
         registers = [0] * PCS_IDENTITY_COUNT
         _put_ascii(registers, 0, 8, "Pylontech")
@@ -199,7 +215,14 @@ class TestFH3XProtocol(unittest.TestCase):
         registers[24] = 50
         _put_s32(registers, 27, 6240)
         _put_float32(registers, 29, 428.25)
+        registers[31] = 2301
+        registers[32] = 101
+        registers[33] = 2312
+        registers[34] = 115
+        registers[35] = 2299
+        registers[36] = 130
         registers[40] = 5001
+        registers[60] = 1
         registers[61] = 1
         _put_s32(registers, 62, -1740)
         registers[64] = 3087
@@ -217,7 +240,33 @@ class TestFH3XProtocol(unittest.TestCase):
         self.assertEqual(values["battery_state"], "charging")
         self.assertEqual(values["battery_soc"], 78)
         self.assertAlmostEqual(values["grid_frequency"], 50.01)
+        self.assertEqual(values["average_grid_voltage"], 230.4)
+        self.assertEqual(values["average_grid_current"], 11.5)
+        self.assertEqual(values["grid_operating_mode"], "grid_tied")
         self.assertAlmostEqual(values["pv_total_energy"], 428.25)
+
+    def test_ac_output_substate_operating_modes(self) -> None:
+        expected = {0: "unknown", 1: "grid_tied", 2: "backup", 99: "unknown"}
+        for substate, mode in expected.items():
+            with self.subTest(substate=substate):
+                registers = [0] * PCS_MONITOR_COUNT
+                registers[60] = substate
+                values = decode_pcs(registers)
+                self.assertEqual(values["grid_operating_mode"], mode)
+
+    def test_grid_averages_require_all_valid_phases(self) -> None:
+        registers = [0] * PCS_MONITOR_COUNT
+        registers[31] = 2300
+        registers[33] = 0xFFFF
+        registers[35] = 2310
+        registers[32] = 100
+        registers[34] = 110
+        registers[36] = 0xFFFF
+
+        values = decode_pcs(registers)
+
+        self.assertNotIn("average_grid_voltage", values)
+        self.assertNotIn("average_grid_current", values)
 
     def test_extended_device_and_monitor_values(self) -> None:
         device = [0] * PCS_DEVICE_INFO_EXT_COUNT
@@ -234,6 +283,7 @@ class TestFH3XProtocol(unittest.TestCase):
         _put_s32(monitor, 3, 1800)
         _put_s32(monitor, 32, 9200)
         _put_s32(monitor, 34, -2100)
+        monitor[49] = 1234
         _put_float32(monitor, 62, 12.5)
 
         values = decode_device_info_ext(device)
@@ -247,7 +297,16 @@ class TestFH3XProtocol(unittest.TestCase):
         self.assertEqual(values["backup_power_r"], 1800)
         self.assertEqual(values["parallel_pv_power"], 9200)
         self.assertEqual(values["parallel_battery_power"], -2100)
+        self.assertEqual(values["battery_capacity"], 12.34)
         self.assertAlmostEqual(values["grid_to_battery_energy"], 12.5)
+
+    def test_bms_home_load_energy_converts_wh_to_kwh(self) -> None:
+        registers = [0, 0]
+        _put_u32(registers, 0, 613_250)
+
+        values = decode_bms_load_energy(registers)
+
+        self.assertEqual(values["home_load_energy"], 613.25)
 
     def test_bms_system_values(self) -> None:
         registers = [0] * BMS_SYSTEM_COUNT

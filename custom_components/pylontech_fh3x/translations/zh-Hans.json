@@ -69,6 +69,10 @@
       "bms_soh": {"name": "电池健康度"},
       "bms_cycles": {"name": "电池循环次数"},
       "bms_remaining_energy": {"name": "电池剩余能量"},
+      "battery_capacity": {"name": "电池总容量"},
+      "home_load_energy": {"name": "家庭累计用电量"},
+      "average_grid_voltage": {"name": "平均电网电压"},
+      "average_grid_current": {"name": "平均电网电流"},
       "pv1_voltage": {"name": "PV1 电压"},
       "pv1_current": {"name": "PV1 电流"},
       "pv1_power": {"name": "PV1 功率"},
@@ -96,6 +100,7 @@
       "bms_cell_temperature_min": {"name": "最低单体温度"}
     },
     "binary_sensor": {
+      "grid_connected": {"name": "电网连接状态"},
       "inverter_fault": {"name": "逆变器故障"},
       "inverter_warning": {"name": "逆变器警告"},
       "bms_protection": {"name": "BMS 保护"},

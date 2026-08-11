@@ -24,7 +24,8 @@ from .protocol import FH3XValue
 class FH3XBinarySensorEntityDescription(BinarySensorEntityDescription):
     """Describe an FH3X problem sensor."""
 
-    is_on_fn: Callable[[Mapping[str, FH3XValue]], bool]
+    is_on_fn: Callable[[Mapping[str, FH3XValue]], bool | None]
+    available_fn: Callable[[Mapping[str, FH3XValue]], bool] | None = None
     attributes_fn: Callable[[Mapping[str, FH3XValue]], Mapping[str, Any]] | None = None
 
 
@@ -187,7 +188,31 @@ def _bms_alarm_attributes(data: Mapping[str, FH3XValue]) -> Mapping[str, Any]:
     }
 
 
+def _grid_connected(data: Mapping[str, FH3XValue]) -> bool | None:
+    mode = data.get("grid_operating_mode")
+    if mode == "grid_tied":
+        return True
+    if mode == "backup":
+        return False
+    return None
+
+
+def _grid_connection_attributes(
+    data: Mapping[str, FH3XValue],
+) -> Mapping[str, Any]:
+    return {"operating_mode": data.get("grid_operating_mode", "unknown")}
+
+
 BINARY_SENSOR_DESCRIPTIONS = (
+    FH3XBinarySensorEntityDescription(
+        key="grid_connected",
+        translation_key="grid_connected",
+        device_class=BinarySensorDeviceClass.CONNECTIVITY,
+        is_on_fn=_grid_connected,
+        available_fn=lambda data: data.get("grid_operating_mode")
+        in {"grid_tied", "backup"},
+        attributes_fn=_grid_connection_attributes,
+    ),
     FH3XBinarySensorEntityDescription(
         key="inverter_fault",
         translation_key="inverter_fault",
@@ -305,7 +330,15 @@ class FH3XBinarySensor(FH3XCoordinatorEntity, BinarySensorEntity):
         self.entity_description = description
 
     @property
-    def is_on(self) -> bool:
+    def available(self) -> bool:
+        """Return whether the PCS reported a meaningful state."""
+        return super().available and (
+            self.entity_description.available_fn is None
+            or self.entity_description.available_fn(self.coordinator.data.values)
+        )
+
+    @property
+    def is_on(self) -> bool | None:
         """Return whether the problem is active."""
         return self.entity_description.is_on_fn(self.coordinator.data.values)
 

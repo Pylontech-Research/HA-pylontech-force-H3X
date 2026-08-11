@@ -15,7 +15,11 @@ No cloud account is required.
 - UI-based setup and reconfiguration.
 - One coordinated poll shared by every entity.
 - PCS identity, operating state, PV1/PV2/PV3, grid, load and battery values.
+- Everyday grid context: connection state, three-phase average voltage/current
+  and frequency, plus battery capacity when reported by the PCS.
 - BMS SOC, SOH, cycles, temperatures, cell voltage limits and alarms.
+- BMS lifetime home-load energy when the installed firmware supports the
+  dedicated single/parallel-system counter.
 - Energy sensors compatible with Home Assistant long-term statistics.
 - Privacy-safe diagnostics download.
 - English and Simplified Chinese translations.

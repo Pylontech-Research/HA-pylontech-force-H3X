@@ -23,8 +23,11 @@ from .protocol import (
     BMS_CELL_VOLTAGE_OFFSET,
     BMS_DEVICE_INFO_ADDRESS,
     BMS_DEVICE_INFO_COUNT,
+    BMS_LOAD_ENERGY_ADDRESS,
+    BMS_LOAD_ENERGY_COUNT,
     BMS_MODULE_TEMPERATURE_OFFSET,
     BMS_MODULE_VOLTAGE_OFFSET,
+    BMS_PARALLEL_LOAD_ENERGY_ADDRESS,
     BMS_PILE_ADDRESS,
     BMS_PILE_HEADER_COUNT,
     BMS_SYSTEM_ADDRESS,
@@ -53,6 +56,7 @@ from .protocol import (
     decode_bms,
     decode_bms_detail_values,
     decode_bms_device_info,
+    decode_bms_load_energy,
     decode_bms_pile_header,
     decode_device_info_ext,
     decode_energy_management_controls,
@@ -115,6 +119,8 @@ class FH3XModbusClient:
         self._identity: FH3XIdentity | None = None
         self._device_values: dict[str, FH3XValue] = {}
         self._device_info_attempted = False
+        self._load_energy_values: dict[str, FH3XValue] = {}
+        self._load_energy_failures = 0
         self._total_increasing_guard = TotalIncreasingGuard()
         self._last_device_id: int | None = None
         self._last_request_completed_at = 0.0
@@ -302,7 +308,46 @@ class FH3XModbusClient:
         except FH3XError as err:
             _LOGGER.debug("FH3X extended monitor block is unavailable: %s", err)
             return {}
-        return decode_pcs_monitor_ext(registers)
+        values = decode_pcs_monitor_ext(registers)
+        capacity = values.get("battery_capacity")
+        if isinstance(capacity, int | float) and capacity > 0:
+            self._device_values["battery_capacity"] = capacity
+        else:
+            # A zero from an unavailable extended register must not replace a
+            # previously confirmed static capacity or become a fake value.
+            values.pop("battery_capacity", None)
+        return values
+
+    async def _async_read_optional_load_energy(self) -> dict[str, FH3XValue]:
+        """Read and stabilize the BMS lifetime home-load energy counter."""
+        parallel_count = self._device_values.get("pcs_parallel_machine_count", 1)
+        address = (
+            BMS_PARALLEL_LOAD_ENERGY_ADDRESS
+            if isinstance(parallel_count, int | float) and parallel_count > 1
+            else BMS_LOAD_ENERGY_ADDRESS
+        )
+        try:
+            registers = await self._async_read_registers(
+                address,
+                BMS_LOAD_ENERGY_COUNT,
+                BMS_DEVICE_ID,
+            )
+        except FH3XError as err:
+            self._load_energy_failures += 1
+            _LOGGER.debug(
+                "FH3X BMS load energy at %s is unavailable (%s/3): %s",
+                address,
+                self._load_energy_failures,
+                err,
+            )
+            if self._load_energy_failures < 3:
+                return dict(self._load_energy_values)
+            return {}
+
+        values = decode_bms_load_energy(registers)
+        self._load_energy_values = values
+        self._load_energy_failures = 0
+        return dict(values)
 
     async def _async_read_detailed_bms(
         self, bms_values: dict[str, FH3XValue]
@@ -509,12 +554,14 @@ class FH3XModbusClient:
                 BMS_DEVICE_ID,
             )
             bms_values = decode_bms(bms_registers)
+            load_energy_values = await self._async_read_optional_load_energy()
             detailed_bms_values = await self._async_read_detailed_bms(bms_values)
 
         values = decode_pcs(pcs_registers)
         values.update(self._device_values)
         values.update(monitor_ext_values)
         values.update(bms_values)
+        values.update(load_energy_values)
         values.update(detailed_bms_values)
         values.update(control_values)
         self._total_increasing_guard.apply(values)

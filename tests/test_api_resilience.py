@@ -187,9 +187,63 @@ class TestFH3XTransportResilience(unittest.IsolatedAsyncioTestCase):
         transitions = sum(
             previous != current for previous, current in pairwise(device_ids)
         )
-        self.assertEqual(device_ids[:-1], [2] * 6)
-        self.assertEqual(device_ids[-1], 1)
+        first_bms = device_ids.index(1)
+        self.assertEqual(device_ids[:first_bms], [2] * first_bms)
+        self.assertEqual(device_ids[first_bms:], [1] * (len(device_ids) - first_bms))
         self.assertEqual(transitions, 1)
+
+    async def test_load_energy_selects_single_and_parallel_registers(self) -> None:
+        client = self._client(read_retries=0)
+        read = AsyncMock(return_value=[0, 1234])
+        client._async_read_registers = read
+
+        single = await client._async_read_optional_load_energy()
+        self.assertEqual(single["home_load_energy"], 1.234)
+        read.assert_awaited_with(API.BMS_LOAD_ENERGY_ADDRESS, 2, 1)
+
+        client._device_values["pcs_parallel_machine_count"] = 2
+        parallel = await client._async_read_optional_load_energy()
+        self.assertEqual(parallel["home_load_energy"], 1.234)
+        read.assert_awaited_with(API.BMS_PARALLEL_LOAD_ENERGY_ADDRESS, 2, 1)
+
+    async def test_load_energy_becomes_unavailable_after_three_failures(self) -> None:
+        client = self._client(read_retries=0)
+        client._load_energy_values = {"home_load_energy": 42.5}
+        client._async_read_registers = AsyncMock(
+            side_effect=API.FH3XConnectionError("unavailable")
+        )
+
+        self.assertEqual(
+            await client._async_read_optional_load_energy(),
+            {"home_load_energy": 42.5},
+        )
+        self.assertEqual(
+            await client._async_read_optional_load_energy(),
+            {"home_load_energy": 42.5},
+        )
+        self.assertEqual(await client._async_read_optional_load_energy(), {})
+
+        client._async_read_registers = AsyncMock(return_value=[0, 42_501])
+        self.assertEqual(
+            await client._async_read_optional_load_energy(),
+            {"home_load_energy": 42.501},
+        )
+        self.assertEqual(client._load_energy_failures, 0)
+
+    async def test_capacity_is_cached_and_zero_is_not_published(self) -> None:
+        client = self._client(read_retries=0)
+        registers = [0] * API.PCS_MONITOR_EXT_COUNT
+        registers[49] = 1234
+        client._async_read_registers = AsyncMock(return_value=registers)
+
+        values = await client._async_read_optional_monitor_ext()
+        self.assertEqual(values["battery_capacity"], 12.34)
+        self.assertEqual(client._device_values["battery_capacity"], 12.34)
+
+        registers[49] = 0
+        values = await client._async_read_optional_monitor_ext()
+        self.assertNotIn("battery_capacity", values)
+        self.assertEqual(client._device_values["battery_capacity"], 12.34)
 
     async def test_write_waits_when_switching_from_bms_to_pcs(self) -> None:
         client = self._client(read_retries=0)

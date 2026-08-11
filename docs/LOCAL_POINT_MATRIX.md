@@ -11,13 +11,15 @@ OTA features are intentionally excluded.
 | PCS identity | 2 | 30010–30040 | Implemented | Device registry identity and firmware |
 | PCS extended identity | 2 | 30036–30078 | Optional, implemented | Rating, safety type, parallel mode/count, AFCI version |
 | PCS live monitor | 2 | 30100–30198 | Implemented | PV, AC, grid, battery, EPS, energy, three-phase and diagnostic values |
-| PCS extended monitor | 2 | 30600–30669 | Optional, implemented | Backup/EPS phases, parallel-system totals, meter and flow energy |
+| PCS grid substate | 2 | 30160 | Implemented | Grid-connected state; unknown enum values remain unavailable |
+| PCS extended monitor | 2 | 30600–30669 | Optional, implemented | Backup/EPS phases, parallel-system totals, meter and flow energy; 30649 provides battery capacity when non-zero |
 | Active power control | 2 | 40400–40402 | Implemented | Mode readback and export-limit control |
 | Internal heat-pump control | 2 | 40848 | Implemented | Advanced Controls switch |
 | EMS and four periods | 2 | 40901–40931 | Implemented | EMS/EPS and period enable switches are daily Controls; full period details are Advanced Configuration |
 | Peak shaving | 2 | 40973–40975 | Implemented | Advanced Controls switch plus Advanced Configuration limits |
 | BMS equipment information | 1 | 0x1000–0x101E | Optional, implemented | BMS type/model/version and parallel information |
 | BMS aggregate system | 1 | 0x1100–0x114E | Implemented | SOC/SOH, limits, energy, extrema, channels, flags and alarms |
+| BMS lifetime load energy | 1 | 0x0691–0x0692 / 0x06D1–0x06D2 | Optional, implemented | Single/parallel-system home-load energy; unavailable after three failed reads |
 | BMS single-pile header | 1 | 0x1400–0x145F | Optional, implemented | Pile identity and summary when detailed BMS is enabled |
 | BMS module arrays | 1 | 0x1460+, 0x14B0+ | Optional, implemented | Per-module voltage and temperature, disabled by default |
 | BMS cell arrays | 1 | 0x1500+, 0x1800+ | Optional, implemented | Per-cell voltage and temperature, disabled by default |

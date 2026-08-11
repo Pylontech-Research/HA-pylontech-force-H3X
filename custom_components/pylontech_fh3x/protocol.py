@@ -31,6 +31,9 @@ PCS_PEAK_SHAVING_COUNT = 3
 
 BMS_SYSTEM_ADDRESS = 0x1100
 BMS_SYSTEM_COUNT = 0x114F - BMS_SYSTEM_ADDRESS
+BMS_LOAD_ENERGY_ADDRESS = 0x0691
+BMS_PARALLEL_LOAD_ENERGY_ADDRESS = 0x06D1
+BMS_LOAD_ENERGY_COUNT = 2
 BMS_DEVICE_INFO_ADDRESS = 0x1000
 BMS_DEVICE_INFO_COUNT = 0x101F - BMS_DEVICE_INFO_ADDRESS
 BMS_PILE_ADDRESS = 0x1400
@@ -66,6 +69,7 @@ TOTAL_INCREASING_KEYS = frozenset(
         "battery_discharge_energy",
         "battery_charge_energy_from_ac",
         "eps_output_energy",
+        "home_load_energy",
         "bms_charge_energy_today",
         "bms_discharge_energy_today",
     }
@@ -304,8 +308,13 @@ def decode_pcs(registers: list[int]) -> dict[str, FH3XValue]:
     pv_power = _s32(registers, 27)
     grid_power = _s32(registers, 8)
     battery_power = _s32(registers, 62)
+    grid_voltage_raw = tuple(_u16(registers, offset) for offset in (31, 33, 35))
+    grid_current_raw = tuple(_u16(registers, offset) for offset in (32, 34, 36))
+    grid_voltages = tuple(value * 0.1 for value in grid_voltage_raw)
+    grid_currents = tuple(value * 0.1 for value in grid_current_raw)
+    ac_output_substate = _u16(registers, 60)
 
-    return {
+    values: dict[str, FH3XValue] = {
         "ac_total_power": _s32(registers, 0),
         "ac_apparent_power": _s32(registers, 2),
         "ac_reactive_power": _s32(registers, 4),
@@ -330,12 +339,12 @@ def decode_pcs(registers: list[int]) -> dict[str, FH3XValue]:
         "pv3_power": round(pv3_voltage * pv3_current),
         "pv_total_power": pv_power,
         "pv_total_energy": round(_float32(registers, 29), 3),
-        "grid_voltage_r": round(_u16(registers, 31) * 0.1, 1),
-        "grid_current_r": round(_u16(registers, 32) * 0.1, 1),
-        "grid_voltage_s": round(_u16(registers, 33) * 0.1, 1),
-        "grid_current_s": round(_u16(registers, 34) * 0.1, 1),
-        "grid_voltage_t": round(_u16(registers, 35) * 0.1, 1),
-        "grid_current_t": round(_u16(registers, 36) * 0.1, 1),
+        "grid_voltage_r": round(grid_voltages[0], 1),
+        "grid_current_r": round(grid_currents[0], 1),
+        "grid_voltage_s": round(grid_voltages[1], 1),
+        "grid_current_s": round(grid_currents[1], 1),
+        "grid_voltage_t": round(grid_voltages[2], 1),
+        "grid_current_t": round(grid_currents[2], 1),
         "grid_line_voltage_rs": round(_u16(registers, 37) * 0.1, 1),
         "grid_line_voltage_st": round(_u16(registers, 38) * 0.1, 1),
         "grid_line_voltage_tr": round(_u16(registers, 39) * 0.1, 1),
@@ -354,7 +363,10 @@ def decode_pcs(registers: list[int]) -> dict[str, FH3XValue]:
         "ac_output_energy": round(_float32(registers, 54), 3),
         "grid_import_energy": round(_float32(registers, 56), 3),
         "grid_export_energy": round(_float32(registers, 58), 3),
-        "ac_output_substate": _u16(registers, 60),
+        "ac_output_substate": ac_output_substate,
+        "grid_operating_mode": {1: "grid_tied", 2: "backup"}.get(
+            ac_output_substate, "unknown"
+        ),
         "battery_state": BATTERY_STATES.get(_u16(registers, 61), "unknown"),
         "battery_power": battery_power,
         "battery_voltage": round(_u16(registers, 64) * 0.1, 1),
@@ -378,6 +390,11 @@ def decode_pcs(registers: list[int]) -> dict[str, FH3XValue]:
         "grid_power_t": _s32(registers, 90),
         "bus_p_to_m_voltage": round(_u16(registers, 97) * 0.1, 1),
     }
+    if all(value != 0xFFFF for value in grid_voltage_raw):
+        values["average_grid_voltage"] = round(sum(grid_voltages) / 3, 1)
+    if all(value != 0xFFFF for value in grid_current_raw):
+        values["average_grid_current"] = round(sum(grid_currents) / 3, 1)
+    return values
 
 
 def decode_pcs_monitor_ext(registers: list[int]) -> dict[str, FH3XValue]:
@@ -413,7 +430,7 @@ def decode_pcs_monitor_ext(registers: list[int]) -> dict[str, FH3XValue]:
         "parallel_ac_output_power_s": _s32(registers, 44),
         "parallel_ac_output_power_t": _s32(registers, 46),
         "parallel_battery_capacity_ah": _u16(registers, 48),
-        "parallel_battery_capacity_kwh": round(_u16(registers, 49) * 0.01, 2),
+        "battery_capacity": round(_u16(registers, 49) * 0.01, 2),
         "parallel_pcs_rated_power": _u32(registers, 50),
         "parallel_reactive_power": _s32(registers, 52),
         "acc_power_r": _s32(registers, 54),
@@ -426,6 +443,12 @@ def decode_pcs_monitor_ext(registers: list[int]) -> dict[str, FH3XValue]:
         "grid_to_eps_energy": round(_float32(registers, 66), 3),
         "battery_to_eps_energy": round(_float32(registers, 68), 3),
     }
+
+
+def decode_bms_load_energy(registers: list[int]) -> dict[str, FH3XValue]:
+    """Decode the BMS lifetime home-load counter from U32 Wh to kWh."""
+    _require(registers, BMS_LOAD_ENERGY_COUNT, "BMS load energy")
+    return {"home_load_energy": round(_u32(registers, 0) * 0.001, 3)}
 
 
 def decode_active_power_controls(registers: list[int]) -> dict[str, FH3XValue]:
