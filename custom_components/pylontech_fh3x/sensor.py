@@ -130,14 +130,6 @@ SENSOR_DESCRIPTIONS: tuple[FH3XSensorEntityDescription, ...] = (
         suggested_display_precision=2,
     ),
     FH3XSensorEntityDescription(
-        key="battery_charge_energy_from_ac",
-        translation_key="battery_charge_energy_from_ac",
-        device_class=SensorDeviceClass.ENERGY,
-        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        suggested_display_precision=2,
-    ),
-    FH3XSensorEntityDescription(
         key="battery_discharge_energy",
         translation_key="battery_discharge_energy",
         device_class=SensorDeviceClass.ENERGY,
@@ -380,6 +372,14 @@ ENGINEERING_SENSOR_DESCRIPTIONS = (
     _engineering_sensor(
         "eps_output_energy",
         "EPS output energy",
+        SensorDeviceClass.ENERGY,
+        UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        precision=2,
+    ),
+    _engineering_sensor(
+        "battery_charge_energy_from_ac",
+        "Battery charge energy from AC",
         SensorDeviceClass.ENERGY,
         UnitOfEnergy.KILO_WATT_HOUR,
         state_class=SensorStateClass.TOTAL_INCREASING,

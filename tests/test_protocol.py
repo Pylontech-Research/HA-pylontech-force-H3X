@@ -94,6 +94,30 @@ class TestFH3XProtocol(unittest.TestCase):
         guard.apply(confirmed_reset)
         self.assertEqual(confirmed_reset["grid_import_energy"], 0.01)
 
+    def test_total_increasing_guard_rejects_one_huge_increase(self) -> None:
+        guard = TotalIncreasingGuard()
+        guard.apply({"pv_total_energy": 71.235})
+
+        torn_read = {"pv_total_energy": 1.3168603261118859e34}
+        guard.apply(torn_read)
+        self.assertEqual(torn_read["pv_total_energy"], 71.235)
+
+        recovered = {"pv_total_energy": 71.236}
+        guard.apply(recovered)
+        self.assertEqual(recovered["pv_total_energy"], 71.236)
+
+    def test_total_increasing_guard_accepts_confirmed_large_increase(self) -> None:
+        guard = TotalIncreasingGuard()
+        guard.apply({"grid_import_energy": 100.0})
+
+        first_sample = {"grid_import_energy": 125.0}
+        guard.apply(first_sample)
+        self.assertEqual(first_sample["grid_import_energy"], 100.0)
+
+        confirmed = {"grid_import_energy": 125.01}
+        guard.apply(confirmed)
+        self.assertEqual(confirmed["grid_import_energy"], 125.01)
+
     def test_identity(self) -> None:
         registers = [0] * PCS_IDENTITY_COUNT
         _put_ascii(registers, 0, 8, "Pylontech")

@@ -46,10 +46,10 @@ STANDARD_SENSOR_KEYS = frozenset(
     }
 )
 
-# These counters are required by Home Assistant's Energy Dashboard even when
-# the user chooses the compact entity profile.  AC-side charging must remain
-# distinct from total (PV + AC) battery charging.
-ENERGY_SENSOR_KEYS = frozenset({"battery_charge_energy_from_ac"})
+# Keep vendor-specific counters out of the normal HA device page.  This key was
+# briefly promoted in v0.6.0, so handle it explicitly in case its persisted
+# registry entry no longer carries the original diagnostic category.
+ENGINEERING_SENSOR_KEYS = frozenset({"battery_charge_energy_from_ac"})
 
 # These four entities aggregate the raw PCS/BMS fault bitfields and expose the
 # decoded issue list as attributes.  The individual condition flags are useful
@@ -90,14 +90,10 @@ CONTROL_DOMAINS = frozenset({"number", "select", "switch", "time"})
 
 def profile_sensor_description(description: Any, profile: str) -> Any:
     """Apply the selected default visibility to a sensor description."""
-    promote = description.key in ENERGY_SENSOR_KEYS or (
-        description.key in STANDARD_SENSOR_KEYS
-        and profile
-        in {
-            ENTITY_PROFILE_STANDARD,
-            ENTITY_PROFILE_ENGINEERING,
-        }
-    )
+    promote = description.key in STANDARD_SENSOR_KEYS and profile in {
+        ENTITY_PROFILE_STANDARD,
+        ENTITY_PROFILE_ENGINEERING,
+    }
     enable_all = profile == ENTITY_PROFILE_ENGINEERING
     if not promote and not enable_all:
         return description
@@ -146,16 +142,16 @@ def apply_profiles_to_registry(
             continue
 
         if domain == "sensor":
-            enabled = key in ENERGY_SENSOR_KEYS or (
-                entity_profile == ENTITY_PROFILE_ENGINEERING
-                or (
+            if key in ENGINEERING_SENSOR_KEYS:
+                enabled = entity_profile == ENTITY_PROFILE_ENGINEERING
+            else:
+                enabled = entity_profile == ENTITY_PROFILE_ENGINEERING or (
                     entity_profile == ENTITY_PROFILE_STANDARD
                     and key in STANDARD_SENSOR_KEYS
                 )
-            )
             if (
                 key not in STANDARD_SENSOR_KEYS
-                and key not in ENERGY_SENSOR_KEYS
+                and key not in ENGINEERING_SENSOR_KEYS
                 and entry.entity_category is None
             ):
                 continue

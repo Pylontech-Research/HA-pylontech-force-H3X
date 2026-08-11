@@ -6,6 +6,7 @@ protocol layer can be tested independently.
 
 from __future__ import annotations
 
+import math
 import struct
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -61,16 +62,22 @@ TOTAL_INCREASING_KEYS = frozenset(
 
 
 class TotalIncreasingGuard:
-    """Reject an isolated cumulative-meter regression.
+    """Reject isolated cumulative-meter regressions and implausible jumps.
 
     A genuine device reset is accepted after the new, lower baseline is seen
     in two consecutive polls.  The first lower sample is held back so a torn
-    two-register read cannot corrupt Home Assistant long-term statistics.
+    two-register read cannot corrupt Home Assistant long-term statistics.  A
+    large increase is handled the same way: it must be repeated by the next
+    poll before it is accepted.
     """
+
+    MAX_TOTAL_KWH = 1_000_000_000
+    MAX_UNCONFIRMED_CHANGE_KWH = 10
 
     def __init__(self) -> None:
         self._last: dict[str, int | float] = {}
         self._reset_candidate: dict[str, int | float] = {}
+        self._increase_candidate: dict[str, int | float] = {}
 
     def apply(self, values: dict[str, FH3XValue]) -> None:
         """Stabilize cumulative values in place."""
@@ -79,14 +86,56 @@ class TotalIncreasingGuard:
             if not isinstance(value, int | float):
                 continue
 
-            previous = self._last.get(key)
-            if previous is None or value >= previous:
-                self._last[key] = value
-                self._reset_candidate.pop(key, None)
+            if (
+                not math.isfinite(value)
+                or value < 0
+                or value > self.MAX_TOTAL_KWH
+            ):
+                previous = self._last.get(key)
+                if previous is None:
+                    values.pop(key, None)
+                else:
+                    values[key] = previous
                 continue
 
+            previous = self._last.get(key)
+            if previous is None:
+                self._last[key] = value
+                self._reset_candidate.pop(key, None)
+                self._increase_candidate.pop(key, None)
+                continue
+
+            if value >= previous:
+                increase = value - previous
+                if increase <= self.MAX_UNCONFIRMED_CHANGE_KWH:
+                    self._last[key] = value
+                    self._reset_candidate.pop(key, None)
+                    self._increase_candidate.pop(key, None)
+                    continue
+
+                candidate = self._increase_candidate.get(key)
+                if (
+                    candidate is not None
+                    and value >= candidate
+                    and value - candidate <= self.MAX_UNCONFIRMED_CHANGE_KWH
+                ):
+                    self._last[key] = value
+                    self._reset_candidate.pop(key, None)
+                    self._increase_candidate.pop(key, None)
+                    continue
+
+                self._increase_candidate[key] = value
+                self._reset_candidate.pop(key, None)
+                values[key] = previous
+                continue
+
+            self._increase_candidate.pop(key, None)
             candidate = self._reset_candidate.get(key)
-            if candidate is not None and value >= candidate:
+            if (
+                candidate is not None
+                and value >= candidate
+                and value - candidate <= self.MAX_UNCONFIRMED_CHANGE_KWH
+            ):
                 # A second sample at or above the lower baseline confirms a
                 # real counter reset. Recorder can now handle the decrease.
                 self._last[key] = value
