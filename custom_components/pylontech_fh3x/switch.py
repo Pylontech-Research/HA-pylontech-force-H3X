@@ -29,7 +29,6 @@ SWITCH_DESCRIPTIONS = (
     FH3XSwitchEntityDescription(
         key="eps_enabled",
         translation_key="eps_enabled",
-        entity_category=EntityCategory.CONFIG,
         entity_registry_enabled_default=False,
         register_address=40904,
     ),

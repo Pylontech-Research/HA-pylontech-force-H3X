@@ -41,7 +41,6 @@ EMS_MODE_DESCRIPTION = SelectEntityDescription(
     key="ems_mode",
     translation_key="ems_mode",
     options=list(EMS_MODE_TO_REGISTER),
-    entity_category=EntityCategory.CONFIG,
     entity_registry_enabled_default=False,
 )
 
