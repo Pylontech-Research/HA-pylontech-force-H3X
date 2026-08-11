@@ -9,7 +9,15 @@ from dataclasses import replace
 from pymodbus.client import AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
-from .const import BMS_DEVICE_ID, DEFAULT_TIMEOUT, PCS_DEVICE_ID
+from .const import (
+    BMS_DEVICE_ID,
+    DEFAULT_DEVICE_SWITCH_DELAY,
+    DEFAULT_READ_RETRIES,
+    DEFAULT_READ_RETRY_DELAY,
+    DEFAULT_REQUEST_INTERVAL,
+    DEFAULT_TIMEOUT,
+    PCS_DEVICE_ID,
+)
 from .protocol import (
     BMS_CELL_TEMPERATURE_OFFSET,
     BMS_CELL_VOLTAGE_OFFSET,
@@ -81,22 +89,54 @@ class FH3XModbusClient:
         *,
         timeout: int = DEFAULT_TIMEOUT,
         detailed_bms: bool = False,
+        request_interval: float = DEFAULT_REQUEST_INTERVAL,
+        device_switch_delay: float = DEFAULT_DEVICE_SWITCH_DELAY,
+        read_retries: int = DEFAULT_READ_RETRIES,
+        read_retry_delay: float = DEFAULT_READ_RETRY_DELAY,
     ) -> None:
         """Initialize the client."""
         self.host = host
         self.port = port
         self.timeout = timeout
         self.detailed_bms = detailed_bms
+        self.request_interval = request_interval
+        self.device_switch_delay = device_switch_delay
+        self.read_retries = read_retries
+        self.read_retry_delay = read_retry_delay
         self._client = AsyncModbusTcpClient(
             host=host,
             port=port,
             timeout=timeout,
-            retries=1,
+            # A retry on the same socket can consume another response carrying
+            # the wrong FH3X unit ID. Reconnect explicitly below instead.
+            retries=0,
         )
         self._lock = asyncio.Lock()
         self._identity: FH3XIdentity | None = None
         self._device_values: dict[str, FH3XValue] = {}
+        self._device_info_attempted = False
         self._total_increasing_guard = TotalIncreasingGuard()
+        self._last_device_id: int | None = None
+        self._last_request_completed_at = 0.0
+
+    def _close_transport(self) -> None:
+        """Close the socket and reset request-pacing state."""
+        self._client.close()
+        self._last_device_id = None
+        self._last_request_completed_at = 0.0
+
+    async def _async_pace_request(self, device_id: int) -> None:
+        """Give the FH3X gateway time to switch between PCS and BMS units."""
+        if self._last_device_id is None:
+            return
+        required_delay = (
+            self.device_switch_delay
+            if self._last_device_id != device_id
+            else self.request_interval
+        )
+        elapsed = asyncio.get_running_loop().time() - self._last_request_completed_at
+        if (remaining := required_delay - elapsed) > 0:
+            await asyncio.sleep(remaining)
 
     async def _async_ensure_connected(self) -> None:
         if self._client.connected:
@@ -135,24 +175,53 @@ class FH3XModbusClient:
                 device_id=device_id,
             )
 
-        try:
-            async with asyncio.timeout(self.timeout):
-                response = await _read_holding()
-                if response.isError() and allow_input_fallback:
-                    response = await _read_input()
-        except (TimeoutError, OSError, ModbusException) as err:
-            self._client.close()
+        response = None
+        for attempt in range(self.read_retries + 1):
+            await self._async_ensure_connected()
+            await self._async_pace_request(device_id)
+            try:
+                async with asyncio.timeout(self.timeout):
+                    response = await _read_holding()
+                    if response.isError() and allow_input_fallback:
+                        response = await _read_input()
+            except (TimeoutError, OSError, ModbusException) as err:
+                self._close_transport()
+                if attempt < self.read_retries:
+                    _LOGGER.warning(
+                        "Transient Modbus read failure for device %s, address %s; "
+                        "reconnecting and retrying",
+                        device_id,
+                        address,
+                    )
+                    await asyncio.sleep(self.read_retry_delay)
+                    continue
+                raise FH3XConnectionError(
+                    f"Error reading device {device_id}, address {address}"
+                ) from err
+            finally:
+                if self._client.connected:
+                    self._last_device_id = device_id
+                    self._last_request_completed_at = asyncio.get_running_loop().time()
+            break
+
+        if response is None:
             raise FH3XConnectionError(
                 f"Error reading device {device_id}, address {address}"
-            ) from err
-
-        if response.isError() or not hasattr(response, "registers"):
+            )
+        if response.isError():
             raise FH3XProtocolError(
                 f"Modbus exception reading device {device_id}, address {address}: "
                 f"{response}"
             )
+        if not hasattr(response, "registers"):
+            self._close_transport()
+            raise FH3XProtocolError(
+                f"Invalid Modbus response reading device {device_id}, address "
+                f"{address}: {response}"
+            )
         registers = list(response.registers)
         if len(registers) != count:
+            self._close_transport()
             raise FH3XProtocolError(
                 f"Short Modbus response from device {device_id}, address {address}: "
                 f"received {len(registers)}, expected {count}"
@@ -307,6 +376,7 @@ class FH3XModbusClient:
     ) -> None:
         """Write one or more holding registers and verify the stored value."""
         await self._async_ensure_connected()
+        await self._async_pace_request(device_id)
         try:
             async with asyncio.timeout(self.timeout):
                 if len(registers) == 1:
@@ -322,10 +392,14 @@ class FH3XModbusClient:
                         device_id=device_id,
                     )
         except (TimeoutError, OSError, ModbusException) as err:
-            self._client.close()
+            self._close_transport()
             raise FH3XConnectionError(
                 f"Error writing device {device_id}, address {address}"
             ) from err
+        finally:
+            if self._client.connected:
+                self._last_device_id = device_id
+                self._last_request_completed_at = asyncio.get_running_loop().time()
 
         if response.isError():
             raise FH3XProtocolError(
@@ -388,6 +462,8 @@ class FH3XModbusClient:
                     self._identity = self._identity_with_address_fallback(
                         self._identity
                     )
+            read_device_info = not self._device_info_attempted
+            if read_device_info:
                 try:
                     device_registers = await self._async_read_registers(
                         PCS_DEVICE_INFO_EXT_ADDRESS,
@@ -400,6 +476,19 @@ class FH3XModbusClient:
                     )
                 else:
                     self._device_values = decode_device_info_ext(device_registers)
+
+            # Keep every normal PCS request together before switching the
+            # gateway to BMS unit 1. Older ordering changed unit IDs three
+            # times per poll and triggered intermittent cross-unit responses.
+            pcs_registers = await self._async_read_registers(
+                PCS_MONITOR_ADDRESS,
+                PCS_MONITOR_COUNT,
+                PCS_DEVICE_ID,
+            )
+            monitor_ext_values = await self._async_read_optional_monitor_ext()
+            control_values = await self._async_read_optional_controls()
+
+            if read_device_info:
                 try:
                     bms_device_registers = await self._async_read_registers(
                         BMS_DEVICE_INFO_ADDRESS,
@@ -412,20 +501,13 @@ class FH3XModbusClient:
                     self._device_values.update(
                         decode_bms_device_info(bms_device_registers)
                     )
+                self._device_info_attempted = True
 
-            pcs_registers = await self._async_read_registers(
-                PCS_MONITOR_ADDRESS,
-                PCS_MONITOR_COUNT,
-                PCS_DEVICE_ID,
-            )
             bms_registers = await self._async_read_registers(
                 BMS_SYSTEM_ADDRESS,
                 BMS_SYSTEM_COUNT,
                 BMS_DEVICE_ID,
             )
-
-            monitor_ext_values = await self._async_read_optional_monitor_ext()
-            control_values = await self._async_read_optional_controls()
             bms_values = decode_bms(bms_registers)
             detailed_bms_values = await self._async_read_detailed_bms(bms_values)
 
@@ -496,5 +578,5 @@ class FH3XModbusClient:
     async def async_close(self) -> None:
         """Close the underlying connection."""
         async with self._lock:
-            self._client.close()
+            self._close_transport()
             _LOGGER.debug("Closed Modbus connection to %s:%s", self.host, self.port)

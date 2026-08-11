@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.12 - 2026-08-11
+
+- Group PCS and BMS requests to minimize Modbus unit-ID switching, and pace
+  consecutive requests for gateways that need a short turnaround interval.
+- Reconnect and retry once after transient transport failures or mismatched
+  unit-ID responses instead of reusing a contaminated TCP connection.
+- Allow slower FH3X responses up to eight seconds, wait for late responses to
+  clear before reconnecting, and apply unit-switch pacing to control writes.
+- Preserve the last valid snapshot for the first two failed polls and mark the
+  device unavailable only after three consecutive failures.
+- Add communication resilience state to downloaded diagnostics.
+
 ## 0.6.11 - 2026-08-11
 
 - Store the selected English entity label in Home Assistant's supported

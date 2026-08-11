@@ -34,7 +34,12 @@ CONTROL_PROFILES = (
 DEFAULT_NAME = "Pylontech Force H3X"
 DEFAULT_PORT = 502
 DEFAULT_SCAN_INTERVAL = 10
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = 8
+DEFAULT_REQUEST_INTERVAL = 0.05
+DEFAULT_DEVICE_SWITCH_DELAY = 0.2
+DEFAULT_READ_RETRIES = 1
+DEFAULT_READ_RETRY_DELAY = 1.0
+MAX_CONSECUTIVE_POLL_FAILURES = 3
 DEFAULT_DETAILED_BMS = False
 # Match the default exposure of mature energy integrations: ordinary users get
 # the system-level power, energy and health entities.  Per-string, per-phase,

@@ -45,4 +45,13 @@ async def async_get_config_entry_diagnostics(
         "coordinator_last_update_success": (
             entry.runtime_data.coordinator.last_update_success
         ),
+        "communication": {
+            "data_stale": entry.runtime_data.coordinator.poll_failure_state.stale,
+            "consecutive_poll_failures": (
+                entry.runtime_data.coordinator.poll_failure_state.consecutive_failures
+            ),
+            "unavailable_after_failures": (
+                entry.runtime_data.coordinator.poll_failure_state.failure_threshold
+            ),
+        },
     }

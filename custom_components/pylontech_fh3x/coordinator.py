@@ -11,8 +11,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import FH3XError, FH3XModbusClient
-from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
+from .const import (
+    CONF_SCAN_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    MAX_CONSECUTIVE_POLL_FAILURES,
+)
 from .protocol import FH3XSnapshot
+from .resilience import PollFailureState
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -28,6 +34,9 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
     ) -> None:
         """Initialize the coordinator."""
         self.client = client
+        self.poll_failure_state = PollFailureState(
+            failure_threshold=MAX_CONSECUTIVE_POLL_FAILURES
+        )
         # Keep a control write and its read-back refresh together.  The
         # coordinator's normal request refresh is debounced for 10 seconds;
         # without this lock, rapid UI changes can overlap and a stale refresh
@@ -45,9 +54,27 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
 
     async def _async_update_data(self) -> FH3XSnapshot:
         try:
-            return await self.client.async_read_snapshot()
+            snapshot = await self.client.async_read_snapshot()
         except FH3XError as err:
+            preserve_snapshot = self.poll_failure_state.record_failure(
+                has_snapshot=self.data is not None
+            )
+            if preserve_snapshot:
+                _LOGGER.warning(
+                    "FH3X poll failed (%s/%s); preserving the last snapshot: %s",
+                    self.poll_failure_state.consecutive_failures,
+                    self.poll_failure_state.failure_threshold,
+                    err,
+                )
+                return self.data
             raise UpdateFailed(f"Unable to update FH3X data: {err}") from err
+        previous_failures = self.poll_failure_state.record_success()
+        if previous_failures:
+            _LOGGER.info(
+                "FH3X communication recovered after %s failed poll(s)",
+                previous_failures,
+            )
+        return snapshot
 
     async def async_write_u16(self, address: int, value: int) -> None:
         """Write a U16 control value and refresh all entities."""
