@@ -93,7 +93,76 @@ class TestFH3XProtocol(unittest.TestCase):
         weekday_mask = update_u16_bit(weekday_mask, 2, False)
         self.assertEqual(weekday_mask, 0b0100010)
 
-    def test_bms_load_energy_offsets_include_pile_base(self) -> None:
+    def test_protocol_register_blocks_match_documented_boundaries(self) -> None:
+        """Lock absolute PCS/BMS blocks to their inclusive document ranges."""
+        expected_blocks = (
+            (PROTOCOL.PCS_IDENTITY_ADDRESS, PROTOCOL.PCS_IDENTITY_COUNT, 30040),
+            (
+                PROTOCOL.PCS_DEVICE_INFO_EXT_ADDRESS,
+                PROTOCOL.PCS_DEVICE_INFO_EXT_COUNT,
+                30078,
+            ),
+            (PROTOCOL.PCS_MONITOR_ADDRESS, PROTOCOL.PCS_MONITOR_COUNT, 30198),
+            (
+                PROTOCOL.PCS_MONITOR_EXT_ADDRESS,
+                PROTOCOL.PCS_MONITOR_EXT_COUNT,
+                30669,
+            ),
+            (
+                PROTOCOL.PCS_ACTIVE_POWER_CONTROL_ADDRESS,
+                PROTOCOL.PCS_ACTIVE_POWER_CONTROL_COUNT,
+                40402,
+            ),
+            (
+                PROTOCOL.PCS_INTERNAL_CONTROL_ADDRESS,
+                PROTOCOL.PCS_INTERNAL_CONTROL_COUNT,
+                40848,
+            ),
+            (
+                PROTOCOL.PCS_ENERGY_MANAGEMENT_ADDRESS,
+                PROTOCOL.PCS_ENERGY_MANAGEMENT_COUNT,
+                40931,
+            ),
+            (
+                PROTOCOL.PCS_PEAK_SHAVING_ADDRESS,
+                PROTOCOL.PCS_PEAK_SHAVING_COUNT,
+                40975,
+            ),
+            (
+                PROTOCOL.BMS_DEVICE_INFO_ADDRESS,
+                PROTOCOL.BMS_DEVICE_INFO_COUNT,
+                0x101E,
+            ),
+            (PROTOCOL.BMS_SYSTEM_ADDRESS, PROTOCOL.BMS_SYSTEM_COUNT, 0x114E),
+            (
+                PROTOCOL.BMS_PILE_ADDRESS,
+                PROTOCOL.BMS_PILE_HEADER_COUNT,
+                0x145F,
+            ),
+        )
+        for address, count, inclusive_end in expected_blocks:
+            with self.subTest(address=address):
+                self.assertEqual(address + count - 1, inclusive_end)
+
+    def test_bms_pile_offsets_include_pile_base(self) -> None:
+        """Section 3.6 values are offsets, not absolute register addresses."""
+        self.assertEqual(PROTOCOL.BMS_PILE_NOMINAL_ADDRESS, 0x143A)
+        self.assertEqual(
+            PROTOCOL.BMS_PILE_ADDRESS + PROTOCOL.BMS_MODULE_VOLTAGE_OFFSET,
+            0x1460,
+        )
+        self.assertEqual(
+            PROTOCOL.BMS_PILE_ADDRESS + PROTOCOL.BMS_MODULE_TEMPERATURE_OFFSET,
+            0x14B0,
+        )
+        self.assertEqual(
+            PROTOCOL.BMS_PILE_ADDRESS + PROTOCOL.BMS_CELL_VOLTAGE_OFFSET,
+            0x1500,
+        )
+        self.assertEqual(
+            PROTOCOL.BMS_PILE_ADDRESS + PROTOCOL.BMS_CELL_TEMPERATURE_OFFSET,
+            0x1800,
+        )
         self.assertEqual(PROTOCOL.BMS_LOAD_ENERGY_ADDRESS, 0x1A91)
         self.assertEqual(PROTOCOL.BMS_PARALLEL_LOAD_ENERGY_ADDRESS, 0x1AD1)
 

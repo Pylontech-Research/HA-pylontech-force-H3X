@@ -493,7 +493,7 @@ def decode_internal_controls(registers: list[int]) -> dict[str, FH3XValue]:
 def decode_energy_management_controls(
     registers: list[int],
 ) -> dict[str, FH3XValue]:
-    """Decode PCS registers 40901 through 40926 (device address 2)."""
+    """Decode PCS registers 40901 through 40931 (device address 2)."""
     _require(registers, PCS_ENERGY_MANAGEMENT_COUNT, "PCS energy management")
     return {
         "charge_discharge_power_reference": round(_s16(registers, 0) * 0.1, 1),

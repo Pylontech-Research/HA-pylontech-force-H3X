@@ -61,3 +61,31 @@ diagnostics.
 Figma-to-protocol parity remains a separate acceptance step. The Figma source
 must be exported or made available through the Figma API before every visible App
 label can be checked against this matrix.
+
+## Address semantics audit
+
+The address map was re-audited against PCS V1.36 and BMS V1.67 after the load
+energy offset correction. The rules are deliberately different between the
+protocols:
+
+- PCS tables use absolute decimal register addresses. All implemented identity,
+  monitor and control blocks therefore use the numbers printed in the PCS table.
+- BMS equipment information (`0x1000` section) and aggregate system information
+  (`0x1100` section) also use absolute hexadecimal addresses.
+- Every address printed in BMS section 3.6.1 is an offset from the pile base
+  `0x1400`. Implemented addresses resolve as follows:
+
+| BMS section 3.6.1 value | Document offset | Actual Modbus address |
+|---|---:|---:|
+| Single-pile header | `0x0000–0x005F` | `0x1400–0x145F` |
+| Nominal voltage and capacity | `0x003A–0x003B` | `0x143A–0x143B` |
+| Module voltages | `0x0060–0x00AA` | `0x1460–0x14AA` |
+| Module temperatures | `0x00B0–0x00FA` | `0x14B0–0x14FA` |
+| Cell voltages | `0x0100–0x02C1` | `0x1500–0x16C1` |
+| Cell temperatures | `0x0400–0x05C1` | `0x1800–0x19C1` |
+| Single-system load energy | `0x0691–0x0692` | `0x1A91–0x1A92` |
+| Parallel-system load energy | `0x06D1–0x06D2` | `0x1AD1–0x1AD2` |
+
+Automated tests pin every implemented block's inclusive end address and every
+implemented BMS section 3.6.1 offset. This prevents a future offset from being
+mistaken for an absolute address again.
