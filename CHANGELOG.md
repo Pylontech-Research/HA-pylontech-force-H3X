@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.17 - 2026-08-12
+
+- Discover FH3X devices when the integration is added using the product's
+  custom multicast address and UDP broadcast compatibility path.
+- Validate every discovered candidate over Modbus TCP before it can be added,
+  with multi-device selection and a manual-address fallback.
+- Update the saved host when a configured device is rediscovered at a new IP,
+  while keeping the Modbus serial number as the authoritative unique ID.
+
 ## 0.6.12 - 2026-08-11
 
 - Group PCS and BMS requests to minimize Modbus unit-ID switching, and pace

@@ -33,6 +33,7 @@ from .const import (
     MAX_SCAN_INTERVAL,
     MIN_SCAN_INTERVAL,
 )
+from .discovery import FH3XDiscoveryInfo, async_discover_fh3x
 from .profiles import apply_profiles_to_registry
 from .protocol import FH3XIdentity
 
@@ -55,10 +56,86 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize the config flow."""
+        self._discoveries: dict[str, FH3XDiscoveryInfo] = {}
+        self._pending_data: dict[str, Any] | None = None
+        self._pending_identity: FH3XIdentity | None = None
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle initial UI setup."""
+        """Discover FH3X devices when the integration is added."""
+        # Preserve compatibility with flows/tests that submit the former user
+        # form directly instead of entering through the frontend.
+        if user_input is not None and CONF_HOST in user_input:
+            return await self.async_step_manual(user_input)
+        return await self.async_step_scan()
+
+    async def async_step_scan(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Actively scan all enabled local IPv4 networks."""
+        del user_input
+        try:
+            discoveries = await async_discover_fh3x(self.hass)
+        except Exception:
+            _LOGGER.exception("Unexpected exception discovering FH3X devices")
+            discoveries = []
+
+        self._discoveries = {
+            f"{discovery.usn or ''}|{discovery.host}": discovery
+            for discovery in discoveries
+        }
+        if not self._discoveries:
+            return await self.async_step_discovery_failed()
+        if len(self._discoveries) == 1:
+            return await self._async_validate_discovery(
+                next(iter(self._discoveries.values()))
+            )
+        return await self.async_step_select_device()
+
+    async def async_step_select_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Let the user select one of multiple discovered devices."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            selected = self._discoveries.get(user_input["device"])
+            if selected is None:
+                errors["base"] = "discovery_expired"
+            else:
+                return await self._async_validate_discovery(selected)
+
+        return self.async_show_form(
+            step_id="select_device",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("device"): vol.In(
+                        {
+                            key: discovery.display_name
+                            for key, discovery in self._discoveries.items()
+                        }
+                    )
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_discovery_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer another scan or manual setup after discovery fails."""
+        del user_input
+        return self.async_show_menu(
+            step_id="discovery_failed",
+            menu_options=["scan", "manual"],
+        )
+
+    async def async_step_manual(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Handle manual IP setup as a discovery fallback."""
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
@@ -79,7 +156,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="manual",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_HOST): str,
@@ -89,6 +166,64 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+    async def _async_validate_discovery(
+        self, discovery: FH3XDiscoveryInfo
+    ) -> ConfigFlowResult:
+        """Validate a UDP candidate using the authoritative Modbus identity."""
+        data = {CONF_HOST: discovery.host, CONF_PORT: discovery.port}
+        try:
+            identity = await async_validate_input(self.hass, data)
+        except (FH3XConnectionError, FH3XProtocolError):
+            return self.async_show_menu(
+                step_id="discovery_validation_failed",
+                menu_options=["scan", "manual"],
+            )
+        except Exception:
+            _LOGGER.exception("Unexpected exception validating discovered FH3X")
+            return self.async_show_menu(
+                step_id="discovery_validation_failed",
+                menu_options=["scan", "manual"],
+            )
+
+        await self.async_set_unique_id(identity.serial, raise_on_progress=False)
+        existing_entry = self.hass.config_entries.async_entry_for_domain_unique_id(
+            DOMAIN, identity.serial
+        )
+        if existing_entry is not None:
+            if existing_entry.data[CONF_HOST] != discovery.host:
+                return self.async_update_reload_and_abort(
+                    existing_entry,
+                    data_updates={CONF_HOST: discovery.host},
+                    reason="already_configured",
+                )
+            return self.async_abort(reason="already_configured")
+
+        self._pending_data = data
+        self._pending_identity = identity
+        self.context["title_placeholders"] = {"name": identity.model or DEFAULT_NAME}
+        return await self.async_step_confirm()
+
+    async def async_step_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Confirm a Modbus-validated discovered FH3X."""
+        if self._pending_data is None or self._pending_identity is None:
+            return self.async_abort(reason="discovery_expired")
+        if user_input is not None:
+            return self.async_create_entry(
+                title=self._pending_identity.model or DEFAULT_NAME,
+                data=self._pending_data,
+            )
+        return self.async_show_form(
+            step_id="confirm",
+            data_schema=vol.Schema({}),
+            description_placeholders={
+                "model": self._pending_identity.model or DEFAULT_NAME,
+                "serial": self._pending_identity.serial,
+                "host": self._pending_data[CONF_HOST],
+            },
         )
 
     async def async_step_reconfigure(

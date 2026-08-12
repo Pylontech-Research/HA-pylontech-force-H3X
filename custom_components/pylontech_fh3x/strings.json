@@ -3,8 +3,37 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to Force H3X",
-        "description": "Connect directly to the local FH3X Modbus TCP endpoint. No cloud account is required.",
+        "title": "Find Force H3X",
+        "description": "Search the local network for a Force H3X. No cloud account is required."
+      },
+      "select_device": {
+        "title": "Select a Force H3X",
+        "description": "Multiple compatible devices were found. Select the one to add.",
+        "data": {"device": "Device"}
+      },
+      "confirm": {
+        "title": "Add {model}",
+        "description": "A Force H3X was verified over Modbus TCP.\n\nModel: {model}\n\nSerial number: {serial}\n\nIP address: {host}"
+      },
+      "discovery_failed": {
+        "title": "No verified Force H3X found",
+        "description": "Check that Home Assistant and the FH3X are on the same local network and that multicast or broadcast traffic is not blocked.",
+        "menu_options": {
+          "scan": "Scan again",
+          "manual": "Enter address manually"
+        }
+      },
+      "discovery_validation_failed": {
+        "title": "Force H3X verification failed",
+        "description": "A device answered discovery, but its FH3X identity could not be verified over Modbus TCP.",
+        "menu_options": {
+          "scan": "Scan again",
+          "manual": "Enter address manually"
+        }
+      },
+      "manual": {
+        "title": "Connect to Force H3X manually",
+        "description": "Enter the local Modbus TCP address directly.",
         "data": {
           "host": "IP address",
           "port": "Port"
@@ -25,11 +54,13 @@
     },
     "error": {
       "cannot_connect": "Unable to connect. Check the IP address, port, network route, and whether Modbus TCP is enabled.",
+      "discovery_expired": "The selected discovery result is no longer available. Scan again.",
       "invalid_response": "The device responded, but the response is not a valid FH3X PCS identity.",
       "unknown": "Unexpected error"
     },
     "abort": {
       "already_configured": "This FH3X is already configured.",
+      "discovery_expired": "The discovery result expired. Start the setup again.",
       "unique_id_mismatch": "The new address belongs to a different FH3X."
     }
   },

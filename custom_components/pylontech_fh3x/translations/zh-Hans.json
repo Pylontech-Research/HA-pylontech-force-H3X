@@ -3,8 +3,31 @@
   "config": {
     "step": {
       "user": {
-        "title": "连接 Force H3X",
-        "description": "通过局域网直接连接 FH3X 的 Modbus TCP 接口，不需要云端账号。",
+        "title": "查找 Force H3X",
+        "description": "在局域网中搜索 Force H3X，不需要云端账号。"
+      },
+      "select_device": {
+        "title": "选择 Force H3X",
+        "description": "发现了多台兼容设备，请选择要添加的设备。",
+        "data": {"device": "设备"}
+      },
+      "confirm": {
+        "title": "添加 {model}",
+        "description": "已通过 Modbus TCP 验证 Force H3X。\n\n型号：{model}\n\n序列号：{serial}\n\nIP 地址：{host}"
+      },
+      "discovery_failed": {
+        "title": "未找到可验证的 Force H3X",
+        "description": "请确认 Home Assistant 与 FH3X 位于同一局域网，并且网络没有阻止组播或广播。",
+        "menu_options": {"scan": "重新扫描", "manual": "手动输入地址"}
+      },
+      "discovery_validation_failed": {
+        "title": "Force H3X 验证失败",
+        "description": "设备响应了发现请求，但无法通过 Modbus TCP 验证其 FH3X 身份。",
+        "menu_options": {"scan": "重新扫描", "manual": "手动输入地址"}
+      },
+      "manual": {
+        "title": "手动连接 Force H3X",
+        "description": "直接输入本地 Modbus TCP 地址。",
         "data": {
           "host": "IP 地址",
           "port": "端口"
@@ -25,11 +48,13 @@
     },
     "error": {
       "cannot_connect": "无法连接。请检查 IP、端口、网络路由以及设备是否已开启 Modbus TCP。",
+      "discovery_expired": "所选发现结果已经失效，请重新扫描。",
       "invalid_response": "设备有响应，但返回内容不是有效的 FH3X PCS 身份信息。",
       "unknown": "发生未知错误"
     },
     "abort": {
       "already_configured": "这台 FH3X 已经配置。",
+      "discovery_expired": "发现结果已经失效，请重新开始添加。",
       "unique_id_mismatch": "新地址连接到的是另一台 FH3X。"
     }
   },
