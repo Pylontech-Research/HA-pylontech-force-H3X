@@ -185,6 +185,17 @@ class TestFH3XDiscovery(unittest.TestCase):
 
         self.assertEqual(DISCOVERY.deduplicate_discoveries([first, duplicate]), [first])
 
+    def test_usn_deduplicates_same_device_after_ip_change(self) -> None:
+        first = DISCOVERY.parse_discovery_response(
+            _response(USN="FH3X-STABLE"), "192.168.137.20", LOCAL_NETWORKS
+        )
+        moved = DISCOVERY.parse_discovery_response(
+            _response(USN="FH3X-STABLE"), "192.168.137.21", LOCAL_NETWORKS
+        )
+        assert first is not None and moved is not None
+
+        self.assertEqual(DISCOVERY.deduplicate_discoveries([first, moved]), [first])
+
     def test_enabled_adapters_define_local_networks(self) -> None:
         adapters = [
             {

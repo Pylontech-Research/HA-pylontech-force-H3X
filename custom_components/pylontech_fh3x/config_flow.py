@@ -83,10 +83,14 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("Unexpected exception discovering FH3X devices")
             discoveries = []
 
-        self._discoveries = {
-            f"{discovery.usn or ''}|{discovery.host}": discovery
-            for discovery in discoveries
-        }
+        self._discoveries = {}
+        for discovery in discoveries:
+            key = getattr(
+                discovery,
+                "deduplication_key",
+                ("usn", discovery.usn) if discovery.usn else ("host", discovery.host),
+            )
+            self._discoveries["|".join(key)] = discovery
         if not self._discoveries:
             return await self.async_step_discovery_failed()
         if len(self._discoveries) == 1:
@@ -188,14 +192,25 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Accept an SSDP candidate without blocking on Modbus validation."""
         data = {CONF_HOST: discovery.host, CONF_PORT: discovery.port}
-        serial = discovery.usn or discovery.host
+        serial = discovery.usn or f"ip-{discovery.host}:{discovery.port}"
         identity = FH3XIdentity(
             manufacturer="Pylontech",
             model=discovery.server or DEFAULT_NAME,
-            serial=f"ssdp-{serial}",
+            serial=serial,
             software_version="unknown",
         )
         await self.async_set_unique_id(identity.serial, raise_on_progress=False)
+        existing_entry = self.hass.config_entries.async_entry_for_domain_unique_id(
+            DOMAIN, identity.serial
+        )
+        if existing_entry is not None:
+            if existing_entry.data[CONF_HOST] != discovery.host:
+                return self.async_update_reload_and_abort(
+                    existing_entry,
+                    data_updates={CONF_HOST: discovery.host},
+                    reason="already_configured",
+                )
+            return self.async_abort(reason="already_configured")
         self._pending_data = data
         self._pending_identity = identity
         self.context["title_placeholders"] = {"name": identity.model}

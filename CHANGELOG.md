@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.22 - 2026-08-12
+
+- Use FH3X SSDP USN as the stable discovery and config-flow deduplication key.
+- Deduplicate the same device across multicast, broadcast, and DHCP address
+  changes, updating an existing entry's host when the IP moves.
+- Fall back to the source IP only when a response has no USN.
+
 ## 0.6.21 - 2026-08-12
 
 - Do not block SSDP discovery confirmation on a Modbus identity read.

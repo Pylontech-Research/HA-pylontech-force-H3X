@@ -200,6 +200,10 @@ class _Discovery:
     def display_name(self):
         return f"{self.server} · {self.usn} · {self.host}"
 
+    @property
+    def deduplication_key(self):
+        return ("usn", self.usn) if self.usn else ("host", self.host)
+
 
 discovery.FH3XDiscoveryInfo = _Discovery
 discovery.async_discover_fh3x = AsyncMock(return_value=[])
@@ -240,7 +244,7 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "confirm")
-        self.assertEqual(flow.unique_id, "ssdp-UDP-SERIAL")
+        self.assertEqual(flow.unique_id, "UDP-SERIAL")
         self.assertEqual(result["description_placeholders"]["host"], "192.168.1.20")
 
         created = await flow.async_step_confirm({})
@@ -264,7 +268,18 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         flow = self._flow()
         candidate = _Discovery("192.168.1.20", usn="UNTRUSTED-UDP")
         await flow._async_validate_discovery(candidate)
-        self.assertEqual(flow.unique_id, "ssdp-UNTRUSTED-UDP")
+        self.assertEqual(flow.unique_id, "UNTRUSTED-UDP")
+
+    async def test_discovered_usn_updates_existing_entry_host(self) -> None:
+        flow = self._flow()
+        entry = _Entry({"host": "192.168.1.10", "port": 502})
+        flow.hass.config_entries.existing = entry
+
+        result = await flow._async_validate_discovery(_Discovery("192.168.1.20"))
+
+        self.assertEqual(result["type"], "abort")
+        self.assertEqual(result["reason"], "already_configured")
+        self.assertEqual(entry.data["host"], "192.168.1.20")
 
     async def test_rediscovery_does_not_block_on_modbus_identity(self) -> None:
         flow = self._flow()
@@ -272,9 +287,9 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         flow.hass.config_entries.existing = entry
         result = await flow._async_validate_discovery(_Discovery("192.168.1.20"))
 
-        self.assertEqual(result["type"], "form")
-        self.assertEqual(result["step_id"], "confirm")
-        self.assertEqual(entry.data["host"], "192.168.1.10")
+        self.assertEqual(result["type"], "abort")
+        self.assertEqual(result["reason"], "already_configured")
+        self.assertEqual(entry.data["host"], "192.168.1.20")
 
     async def test_manual_fallback_preserves_existing_form(self) -> None:
         flow = self._flow()

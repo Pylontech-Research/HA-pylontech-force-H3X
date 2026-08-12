@@ -62,8 +62,10 @@ class FH3XDiscoveryInfo:
 
     @property
     def deduplication_key(self) -> tuple[str, str]:
-        """Return the protocol-defined candidate identity key."""
-        return (self.usn or "", self.host)
+        """Return a stable candidate key across multicast, broadcast and IP changes."""
+        if self.usn:
+            return ("usn", self.usn)
+        return ("host", self.host)
 
     @property
     def display_name(self) -> str:
