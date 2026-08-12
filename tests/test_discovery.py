@@ -86,6 +86,27 @@ class TestFH3XDiscovery(unittest.TestCase):
         self.assertEqual(result.device_address, 1)
         self.assertEqual(result.usn, "SERIAL-123")
 
+    def test_parses_captured_cross_subnet_fh3x_response(self) -> None:
+        payload = (
+            b"HTTP/1.1 200 OK\r\n"
+            b"CACHE-CONTROL: max-age = 1800\r\n"
+            b"EXT: 1\r\n"
+            b"SERVER: FH3X-V0.30;FH3X6KHY1PAU    -V1.0.0.25\r\n"
+            b"ST: ssdp:all\r\n"
+            b"USN: A6042P0325800006\r\n\r\n"
+        )
+
+        result = DISCOVERY.parse_discovery_response(
+            payload,
+            "172.22.194.39",
+            (ipaddress.IPv4Network("172.22.184.0/24"),),
+        )
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.host, "172.22.194.39")
+        self.assertEqual(result.usn, "A6042P0325800006")
+        self.assertEqual(result.server, "FH3X-V0.30;FH3X6KHY1PAU    -V1.0.0.25")
+
     def test_accepts_only_fh3x_device_addresses_one_and_two(self) -> None:
         for address in ("1", "2"):
             with self.subTest(address=address):
@@ -109,7 +130,7 @@ class TestFH3XDiscovery(unittest.TestCase):
             )
         )
 
-    def test_rejects_non_response_and_non_local_source(self) -> None:
+    def test_rejects_non_response_and_unsafe_source(self) -> None:
         self.assertIsNone(
             DISCOVERY.parse_discovery_response(
                 b"M-SEARCH * HTTP/1.1\r\n\r\n",
@@ -118,10 +139,17 @@ class TestFH3XDiscovery(unittest.TestCase):
             )
         )
         self.assertIsNone(
-            DISCOVERY.parse_discovery_response(
-                _response(), "192.168.138.20", LOCAL_NETWORKS
-            )
+            DISCOVERY.parse_discovery_response(_response(), "8.8.8.8", LOCAL_NETWORKS)
         )
+
+    def test_multicast_listener_uses_alternate_source_port(self) -> None:
+        sock = MagicMock()
+
+        with patch.object(DISCOVERY.socket, "socket", return_value=sock):
+            result = DISCOVERY._create_socket("192.168.137.1", broadcast=False)
+
+        self.assertIs(result, sock)
+        sock.bind.assert_called_once_with(("", 1901))
 
     def test_deduplicates_multicast_and_broadcast_responses(self) -> None:
         first = DISCOVERY.parse_discovery_response(

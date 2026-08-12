@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.18 - 2026-08-12
+
+- Accept FH3X discovery responses received from another private subnet and
+  continue to verify the candidate through its Modbus serial number.
+- Use the verified alternate source port `1901` and a multicast hop limit of
+  two, avoiding a conflict with Home Assistant's standard SSDP listener.
+
 ## 0.6.17 - 2026-08-12
 
 - Discover FH3X devices when the integration is added using the product's

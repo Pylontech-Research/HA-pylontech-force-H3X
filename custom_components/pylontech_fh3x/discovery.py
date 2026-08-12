@@ -21,6 +21,7 @@ _LOGGER = logging.getLogger(__name__)
 DISCOVERY_TIMEOUT = 4.0
 MULTICAST_ADDRESS = "239.101.1.250"
 MULTICAST_PORT = 1900
+MULTICAST_SOURCE_PORT = 1901
 BROADCAST_ADDRESS = "255.255.255.255"
 BROADCAST_PORT = 10088
 
@@ -70,7 +71,7 @@ class FH3XDiscoveryInfo:
 def parse_discovery_response(
     payload: bytes,
     source_host: str,
-    local_networks: Iterable[ipaddress.IPv4Network],
+    local_networks: Iterable[ipaddress.IPv4Network] = (),
 ) -> FH3XDiscoveryInfo | None:
     """Parse and validate one proprietary SSDP response."""
     try:
@@ -106,13 +107,10 @@ def parse_discovery_response(
         source = ipaddress.IPv4Address(source_host)
     except ipaddress.AddressValueError:
         return None
-    if (
-        source.is_unspecified
-        or source.is_loopback
-        or source.is_multicast
-        or source.is_link_local
-        or not any(source in local_network for local_network in local_networks)
-    ):
+    # FH3X discovery traffic can be forwarded between private VLANs/subnets.
+    # Do not require the response source to belong to the HA interface prefix;
+    # the candidate is authoritatively verified over Modbus before setup.
+    if not source.is_private or source.is_loopback or source.is_link_local:
         return None
 
     return FH3XDiscoveryInfo(
@@ -177,6 +175,12 @@ class _FH3XDiscoveryProtocol(asyncio.DatagramProtocol):
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         """Parse a response without blocking the event loop."""
+        _LOGGER.debug(
+            "FH3X discovery received %s bytes from %s:%s",
+            len(data),
+            addr[0],
+            addr[1],
+        )
         discovered = parse_discovery_response(data, addr[0], self._local_networks)
         if discovered is not None:
             self._results.append(discovered)
@@ -193,24 +197,19 @@ def _create_socket(local_address: str, *, broadcast: bool) -> socket.socket:
     if broadcast:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     else:
-        sock.setsockopt(
-            socket.IPPROTO_IP,
-            socket.IP_MULTICAST_IF,
-            socket.inet_aton(local_address),
-        )
-        membership = socket.inet_aton(MULTICAST_ADDRESS) + socket.inet_aton(
-            local_address
-        )
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, membership)
-        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack("B", 1))
-    # The FH3X firmware listens and replies on the protocol port rather than
-    # guaranteeing a unicast response to an ephemeral source port. Bind the
-    # same way as its reference implementation; SO_REUSEADDR permits HA's
-    # standard SSDP listener to coexist on port 1900.
+        # Do not force IP_MULTICAST_IF here. On HA OS, the network API exposes
+        # the host adapter address while the integration runs in the Core
+        # container; forcing that host address makes bind/send fail or sends
+        # through the wrong namespace. The kernel route selects the correct
+        # interface for the multicast destination.
+        sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack("B", 2))
+    # HA's built-in standards-compliant SSDP scanner already owns UDP 1900.
+    # FH3X replies to the request's source port, so use the verified alternate
+    # port 1901 and avoid competing with the built-in SSDP socket.
     sock.bind(
         (
             local_address if broadcast else "",
-            BROADCAST_PORT if broadcast else MULTICAST_PORT,
+            BROADCAST_PORT if broadcast else MULTICAST_SOURCE_PORT,
         )
     )
     sock.setblocking(False)
@@ -236,11 +235,7 @@ async def async_discover_fh3x(
     try:
         for local_address, _local_network in interfaces:
             for is_broadcast, destination, request in (
-                (
-                    False,
-                    (MULTICAST_ADDRESS, MULTICAST_PORT),
-                    _MULTICAST_REQUEST,
-                ),
+                (False, (MULTICAST_ADDRESS, MULTICAST_PORT), _MULTICAST_REQUEST),
                 (True, (BROADCAST_ADDRESS, BROADCAST_PORT), _BROADCAST_REQUEST),
             ):
                 sock: socket.socket | None = None
@@ -252,6 +247,13 @@ async def async_discover_fh3x(
                     )
                     transports.append(transport)
                     transport.sendto(request, destination)
+                    _LOGGER.debug(
+                        "FH3X discovery sent from %s:%s to %s:%s",
+                        local_address,
+                        BROADCAST_PORT if is_broadcast else MULTICAST_SOURCE_PORT,
+                        destination[0],
+                        destination[1],
+                    )
                 except OSError as err:
                     if sock is not None:
                         sock.close()
