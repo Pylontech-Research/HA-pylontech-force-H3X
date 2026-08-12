@@ -242,7 +242,7 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
         )
         transport.close.assert_called_once()
 
-    async def test_repeats_requests_during_discovery_window(self) -> None:
+    async def test_retries_only_after_a_full_response_window(self) -> None:
         DISCOVERY.network.async_get_adapters = AsyncMock(
             return_value=[
                 {
@@ -270,12 +270,13 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
                 side_effect=[multicast_socket, broadcast_socket],
             ),
             patch.object(event_loop, "create_datagram_endpoint", create_endpoint),
-            patch.object(DISCOVERY, "DISCOVERY_SEND_INTERVAL", 0.01),
+            patch.object(DISCOVERY, "MAX_DISCOVERY_ATTEMPTS", 3),
+            patch.object(DISCOVERY, "POST_RESPONSE_LISTEN_WINDOW", 0),
         ):
-            await DISCOVERY.async_discover_fh3x(object(), timeout=0.025)
+            await DISCOVERY.async_discover_fh3x(object(), timeout=0.001)
 
-        self.assertGreaterEqual(multicast_transport.sendto.call_count, 2)
-        self.assertGreaterEqual(broadcast_transport.sendto.call_count, 2)
+        self.assertEqual(multicast_transport.sendto.call_count, 3)
+        self.assertEqual(broadcast_transport.sendto.call_count, 3)
         multicast_transport.close.assert_called_once()
         broadcast_transport.close.assert_called_once()
 
@@ -300,6 +301,10 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
             ]
         )
 
+        async def cancel_wait(awaitable, _timeout=None, **_kwargs):
+            awaitable.close()
+            raise asyncio.CancelledError
+
         with (
             patch.object(
                 DISCOVERY,
@@ -309,8 +314,8 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
             patch.object(event_loop, "create_datagram_endpoint", create_endpoint),
             patch.object(
                 DISCOVERY.asyncio,
-                "sleep",
-                AsyncMock(side_effect=asyncio.CancelledError),
+                "wait_for",
+                side_effect=cancel_wait,
             ),
             self.assertRaises(asyncio.CancelledError),
         ):

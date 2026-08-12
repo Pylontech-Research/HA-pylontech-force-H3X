@@ -132,6 +132,21 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             menu_options=["scan", "manual"],
         )
 
+    async def async_step_discovery_validation_failed(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer recovery after discovery validation fails."""
+        if user_input is not None:
+            next_step = user_input.get("next_step_id")
+            if next_step == "scan":
+                return await self.async_step_scan()
+            if next_step == "manual":
+                return await self.async_step_manual()
+        return self.async_show_menu(
+            step_id="discovery_validation_failed",
+            menu_options=["scan", "manual"],
+        )
+
     async def async_step_manual(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -173,19 +188,25 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Validate a UDP candidate using the authoritative Modbus identity."""
         data = {CONF_HOST: discovery.host, CONF_PORT: discovery.port}
-        try:
-            identity = await async_validate_input(self.hass, data)
-        except (FH3XConnectionError, FH3XProtocolError):
-            return self.async_show_menu(
-                step_id="discovery_validation_failed",
-                menu_options=["scan", "manual"],
-            )
-        except Exception:
-            _LOGGER.exception("Unexpected exception validating discovered FH3X")
-            return self.async_show_menu(
-                step_id="discovery_validation_failed",
-                menu_options=["scan", "manual"],
-            )
+        identity: FH3XIdentity | None = None
+        for attempt in range(2):
+            try:
+                identity = await async_validate_input(self.hass, data)
+                break
+            except (FH3XConnectionError, FH3XProtocolError) as err:
+                _LOGGER.warning(
+                    "FH3X discovery validation failed for %s (attempt %s/2): %s",
+                    discovery.host,
+                    attempt + 1,
+                    err,
+                )
+            except Exception:
+                _LOGGER.exception(
+                    "Unexpected exception validating discovered FH3X (attempt %s/2)",
+                    attempt + 1,
+                )
+        if identity is None:
+            return await self.async_step_discovery_validation_failed()
 
         await self.async_set_unique_id(identity.serial, raise_on_progress=False)
         existing_entry = self.hass.config_entries.async_entry_for_domain_unique_id(

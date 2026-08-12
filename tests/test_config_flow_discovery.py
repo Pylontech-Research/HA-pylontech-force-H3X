@@ -304,6 +304,24 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["step_id"], "discovery_validation_failed")
         self.assertEqual(result["menu_options"], ["scan", "manual"])
 
+    async def test_validation_failure_menu_can_start_scan(self) -> None:
+        flow = self._flow()
+        result = await flow.async_step_discovery_validation_failed(
+            {"next_step_id": "scan"}
+        )
+
+        self.assertEqual(result["type"], "menu")
+        self.assertEqual(result["step_id"], "discovery_failed")
+
+    async def test_validation_failure_menu_can_start_manual_setup(self) -> None:
+        flow = self._flow()
+        result = await flow.async_step_discovery_validation_failed(
+            {"next_step_id": "manual"}
+        )
+
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "manual")
+
     async def test_manual_fallback_preserves_existing_form(self) -> None:
         flow = self._flow()
 

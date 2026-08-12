@@ -18,8 +18,11 @@ from .const import DEFAULT_PORT
 
 _LOGGER = logging.getLogger(__name__)
 
-DISCOVERY_TIMEOUT = 4.0
-DISCOVERY_SEND_INTERVAL = 1.0
+MAX_DISCOVERY_ATTEMPTS = 3
+RESPONSE_WINDOW = 3.5
+POST_RESPONSE_LISTEN_WINDOW = 3.0
+# Backwards-compatible name for callers that used the old timeout constant.
+DISCOVERY_TIMEOUT = RESPONSE_WINDOW
 MULTICAST_ADDRESS = "239.101.1.250"
 MULTICAST_PORT = 1900
 MULTICAST_SOURCE_PORT = 1901
@@ -170,9 +173,11 @@ class _FH3XDiscoveryProtocol(asyncio.DatagramProtocol):
         self,
         local_networks: tuple[ipaddress.IPv4Network, ...],
         results: list[FH3XDiscoveryInfo],
+        response_event: asyncio.Event,
     ) -> None:
         self._local_networks = local_networks
         self._results = results
+        self._response_event = response_event
 
     def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
         """Parse a response without blocking the event loop."""
@@ -185,6 +190,7 @@ class _FH3XDiscoveryProtocol(asyncio.DatagramProtocol):
         discovered = parse_discovery_response(data, addr[0], self._local_networks)
         if discovered is not None:
             self._results.append(discovered)
+            self._response_event.set()
 
     def error_received(self, exc: Exception) -> None:
         """Log a per-socket error without failing other adapters."""
@@ -223,7 +229,7 @@ def _create_socket(local_address: str, *, broadcast: bool) -> socket.socket:
 async def async_discover_fh3x(
     hass: HomeAssistant,
     *,
-    timeout: float = DISCOVERY_TIMEOUT,
+    timeout: float = RESPONSE_WINDOW,
 ) -> list[FH3XDiscoveryInfo]:
     """Actively discover FH3X devices on all HA-enabled IPv4 adapters."""
     adapters = await network.async_get_adapters(hass)
@@ -235,25 +241,27 @@ async def async_discover_fh3x(
     local_networks = tuple(network_ for _, network_ in interfaces)
     results: list[FH3XDiscoveryInfo] = []
     transports: list[asyncio.DatagramTransport] = []
+    response_event = asyncio.Event()
     requests: list[
         tuple[asyncio.DatagramTransport, tuple[str, int], str, int]
     ] = []
 
     try:
         for local_address, _local_network in interfaces:
-            for is_broadcast, destination, request in (
-                (False, (MULTICAST_ADDRESS, MULTICAST_PORT), _MULTICAST_REQUEST),
-                (True, (BROADCAST_ADDRESS, BROADCAST_PORT), _BROADCAST_REQUEST),
+            for is_broadcast, destination in (
+                (False, (MULTICAST_ADDRESS, MULTICAST_PORT)),
+                (True, (BROADCAST_ADDRESS, BROADCAST_PORT)),
             ):
                 sock: socket.socket | None = None
                 try:
                     sock = _create_socket(local_address, broadcast=is_broadcast)
                     transport, _protocol = await loop.create_datagram_endpoint(
-                        lambda: _FH3XDiscoveryProtocol(local_networks, results),
+                        lambda: _FH3XDiscoveryProtocol(
+                            local_networks, results, response_event
+                        ),
                         sock=sock,
                     )
                     transports.append(transport)
-                    transport.sendto(request, destination)
                     requests.append(
                         (
                             transport,
@@ -283,15 +291,10 @@ async def async_discover_fh3x(
 
         if not transports:
             return []
-        # MX is a maximum response delay, not a guarantee that one packet is
-        # enough.  Repeat while the discovery window is open so a lost UDP
-        # datagram or a Wi-Fi handover does not turn into a false failure.
-        deadline = loop.time() + timeout
-        while True:
-            remaining = deadline - loop.time()
-            if remaining <= 0:
-                break
-            await asyncio.sleep(min(DISCOVERY_SEND_INTERVAL, remaining))
+        # MX is a maximum response delay. Send once, wait for the complete
+        # response window, and only retry if no valid FH3X response arrived.
+        for attempt in range(1, MAX_DISCOVERY_ATTEMPTS + 1):
+            response_event.clear()
             for transport, destination, local_address, source_port in requests:
                 try:
                     transport.sendto(
@@ -310,12 +313,28 @@ async def async_discover_fh3x(
                         err,
                     )
                 _LOGGER.debug(
-                    "FH3X discovery retry from %s:%s to %s:%s",
+                    "FH3X discovery %s from %s:%s to %s:%s",
+                    "sent"
+                    if attempt == 1
+                    else f"retry {attempt}/{MAX_DISCOVERY_ATTEMPTS}",
                     local_address,
                     source_port,
                     destination[0],
                     destination[1],
                 )
+            try:
+                await asyncio.wait_for(response_event.wait(), timeout=timeout)
+            except asyncio.TimeoutError:
+                if timeout <= 0:
+                    break
+                if attempt < MAX_DISCOVERY_ATTEMPTS:
+                    continue
+                break
+
+            # Stop sending after the first valid response, but leave the
+            # listeners open briefly so other FH3X devices can answer.
+            await asyncio.sleep(POST_RESPONSE_LISTEN_WINDOW)
+            break
     finally:
         for transport in transports:
             transport.close()

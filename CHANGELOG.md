@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.20 - 2026-08-12
+
+- Limit FH3X discovery to three M-SEARCH attempts with a full response window
+  between attempts instead of sending once per second.
+- Stop sending after a valid FH3X response and keep listening briefly for
+  additional devices.
+- Add the missing discovery-validation recovery step and retry Modbus identity
+  validation once before offering rescan or manual setup.
+
 ## 0.6.19 - 2026-08-12
 
 - Repeat FH3X M-SEARCH requests throughout the discovery window so a single
