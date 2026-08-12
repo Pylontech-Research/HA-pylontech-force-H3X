@@ -2,6 +2,7 @@
   "title": "派能 Force H3X",
   "config": {
     "step": {
+      "scan_done": {"title": "正在搜索 Force H3X"},
       "user": {
         "title": "查找 Force H3X",
         "description": "在局域网中搜索 Force H3X，不需要云端账号。"
@@ -50,6 +51,9 @@
           "port": "端口"
         }
       }
+    },
+    "progress": {
+      "scan": "正在局域网中搜索 Force H3X 设备……"
     },
     "error": {
       "cannot_connect": "无法连接。请检查 IP、端口、网络路由以及设备是否已开启 Modbus TCP。",

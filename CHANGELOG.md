@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.24 - 2026-08-12
+
+- Show a native Home Assistant config-flow progress screen during the
+  long-running multi-device discovery window instead of leaving the frontend
+  blank while late devices are collected.
+- Resume automatically into device selection, confirmation, or recovery after
+  the scan task completes.
+
 ## 0.6.23 - 2026-08-12
 
 - Extend FH3X discovery to a 15-second total window for slow second devices.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -61,6 +62,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._discoveries: dict[str, FH3XDiscoveryInfo] = {}
         self._pending_data: dict[str, Any] | None = None
         self._pending_identity: FH3XIdentity | None = None
+        self._scan_task: asyncio.Task[list[FH3XDiscoveryInfo]] | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -77,11 +79,37 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Actively scan all enabled local IPv4 networks."""
         del user_input
+        if self._scan_task is None:
+            self._scan_task = self.hass.async_create_task(
+                async_discover_fh3x(self.hass), "FH3X network discovery"
+            )
+        if not self._scan_task.done():
+            return self.async_show_progress(
+                progress_action="scan",
+                progress_task=self._scan_task,
+            )
         try:
-            discoveries = await async_discover_fh3x(self.hass)
+            discoveries = self._scan_task.result()
+        except asyncio.CancelledError:
+            raise
         except Exception:
             _LOGGER.exception("Unexpected exception discovering FH3X devices")
             discoveries = []
+        finally:
+            self._scan_task = None
+
+        return await self._async_process_discoveries(discoveries)
+
+    async def async_step_scan_done(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Resume the flow after Home Assistant completes the scan task."""
+        return await self.async_step_scan(user_input)
+
+    async def _async_process_discoveries(
+        self, discoveries: list[FH3XDiscoveryInfo]
+    ) -> ConfigFlowResult:
+        """Route completed discovery results to the appropriate UI step."""
 
         self._discoveries = {}
         for discovery in discoveries:

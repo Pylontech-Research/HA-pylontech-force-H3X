@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib.util
 import sys
 import types
@@ -71,6 +72,9 @@ class _ConfigFlowBase:
     def async_show_menu(self, **kwargs):
         return {"type": "menu", **kwargs}
 
+    def async_show_progress(self, **kwargs):
+        return {"type": "progress", **kwargs}
+
     def async_create_entry(self, **kwargs):
         return {"type": "create_entry", **kwargs}
 
@@ -103,6 +107,11 @@ class _ConfigEntries:
 class _FakeHass:
     def __init__(self) -> None:
         self.config_entries = _ConfigEntries()
+
+    def async_create_task(self, coro, _name=None):
+        import asyncio
+
+        return asyncio.create_task(coro)
 
 
 @dataclass
@@ -226,10 +235,17 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         flow.unique_id = None
         return flow
 
+    async def _run_scan(self, flow):
+        result = await flow.async_step_user()
+        if result["type"] == "progress":
+            await asyncio.sleep(0)
+            result = await flow.async_step_scan()
+        return result
+
     async def test_no_device_offers_rescan_and_manual_setup(self) -> None:
         flow = self._flow()
 
-        result = await flow.async_step_user()
+        result = await self._run_scan(flow)
 
         self.assertEqual(result["type"], "menu")
         self.assertEqual(result["step_id"], "discovery_failed")
@@ -239,7 +255,7 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         flow = self._flow()
         discovery.async_discover_fh3x.return_value = [_Discovery("192.168.1.20")]
         with patch.object(CONFIG_FLOW, "async_validate_input") as validate:
-            result = await flow.async_step_user()
+            result = await self._run_scan(flow)
             validate.assert_not_called()
 
         self.assertEqual(result["type"], "form")
@@ -258,7 +274,7 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
             _Discovery("192.168.1.21", usn="UDP-2"),
         ]
 
-        result = await flow.async_step_user()
+        result = await self._run_scan(flow)
 
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "select_device")

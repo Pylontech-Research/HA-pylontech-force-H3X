@@ -2,6 +2,7 @@
   "title": "Pylontech Force H3X",
   "config": {
     "step": {
+      "scan_done": {"title": "Scanning for Force H3X"},
       "user": {
         "title": "Find Force H3X",
         "description": "Search the local network for a Force H3X. No cloud account is required."
@@ -44,6 +45,9 @@
         "description": "Change the local connection details and verify the same device before saving.",
         "data": {"host": "IP address", "port": "Port"}
       }
+    },
+    "progress": {
+      "scan": "Scanning the local network for Force H3X devices..."
     },
     "error": {
       "cannot_connect": "Unable to connect. Check the IP address, port, network route, and whether Modbus TCP is enabled.",
