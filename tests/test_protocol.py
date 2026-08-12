@@ -93,6 +93,10 @@ class TestFH3XProtocol(unittest.TestCase):
         weekday_mask = update_u16_bit(weekday_mask, 2, False)
         self.assertEqual(weekday_mask, 0b0100010)
 
+    def test_bms_load_energy_offsets_include_pile_base(self) -> None:
+        self.assertEqual(PROTOCOL.BMS_LOAD_ENERGY_ADDRESS, 0x1A91)
+        self.assertEqual(PROTOCOL.BMS_PARALLEL_LOAD_ENERGY_ADDRESS, 0x1AD1)
+
     def test_u16_bit_update_rejects_invalid_inputs(self) -> None:
         with self.assertRaises(ValueError):
             update_u16_bit(-1, 0, True)

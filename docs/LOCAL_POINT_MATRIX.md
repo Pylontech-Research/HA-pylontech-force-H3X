@@ -19,7 +19,7 @@ OTA features are intentionally excluded.
 | Peak shaving | 2 | 40973–40975 | Implemented | Advanced Controls switch plus Advanced Configuration limits |
 | BMS equipment information | 1 | 0x1000–0x101E | Optional, implemented | BMS type/model/version and parallel information |
 | BMS aggregate system | 1 | 0x1100–0x114E | Implemented | SOC/SOH, limits, energy, extrema, channels, flags and alarms |
-| BMS lifetime load energy | 1 | 0x0691–0x0692 / 0x06D1–0x06D2 | Optional, implemented | Single/parallel-system home-load energy; unavailable after three failed reads |
+| BMS lifetime load energy | 1 | 0x1A91–0x1A92 / 0x1AD1–0x1AD2 | Optional, implemented | Single/parallel offsets 0x0691/0x06D1 under the 0x1400 pile base; unavailable after three failed reads |
 | BMS single-pile header | 1 | 0x1400–0x145F | Optional, implemented | Pile identity and summary when detailed BMS is enabled |
 | BMS nominal capacity | 1 | 0x143A–0x143B | Optional, implemented | Non-PCS-parallel capacity from nominal voltage × Ah × BMS pile count |
 | BMS module arrays | 1 | 0x1460+, 0x14B0+ | Optional, implemented | Per-module voltage and temperature, disabled by default |
