@@ -20,6 +20,11 @@
         "description": "请确认 Home Assistant 与 FH3X 位于同一局域网，并且网络没有阻止组播或广播。",
         "menu_options": {"scan": "重新扫描", "manual": "手动输入地址"}
       },
+      "already_configured": {
+        "title": "Force H3X 已配置",
+        "description": "扫描只发现了已经配置的设备。你可以重新扫描或手动添加另一台设备。",
+        "menu_options": {"scan": "重新扫描", "manual": "手动添加另一台设备"}
+      },
       "discovery_validation_failed": {
         "title": "Force H3X 验证失败",
         "description": "设备响应了发现请求，但无法通过 Modbus TCP 验证其 FH3X 身份。",

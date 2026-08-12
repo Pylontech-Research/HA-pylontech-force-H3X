@@ -94,10 +94,34 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not self._discoveries:
             return await self.async_step_discovery_failed()
         if len(self._discoveries) == 1:
+            candidate = next(iter(self._discoveries.values()))
+            if self._existing_entry_for_discovery(candidate) is not None:
+                return await self.async_step_already_configured()
             return await self._async_accept_discovery(
-                next(iter(self._discoveries.values()))
+                candidate
             )
         return await self.async_step_select_device()
+
+    def _existing_entry_for_discovery(
+        self, discovery: FH3XDiscoveryInfo
+    ) -> config_entries.ConfigEntry | None:
+        """Find an existing entry by current or legacy discovery identity."""
+        unique_ids = []
+        if discovery.usn:
+            unique_ids.extend((discovery.usn, f"ssdp-{discovery.usn}"))
+        for unique_id in unique_ids:
+            entry = self.hass.config_entries.async_entry_for_domain_unique_id(
+                DOMAIN, unique_id
+            )
+            if entry is not None:
+                return entry
+        entries = getattr(
+            self.hass.config_entries, "async_entries", lambda _domain: []
+        )(DOMAIN)
+        for entry in entries:
+            if entry.data.get(CONF_HOST) == discovery.host:
+                return entry
+        return None
 
     async def async_step_select_device(
         self, user_input: dict[str, Any] | None = None
@@ -111,6 +135,10 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 return await self._async_accept_discovery(selected)
 
+        ordered = sorted(
+            self._discoveries.items(),
+            key=lambda item: self._existing_entry_for_discovery(item[1]) is not None,
+        )
         return self.async_show_form(
             step_id="select_device",
             data_schema=vol.Schema(
@@ -118,12 +146,26 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Required("device"): vol.In(
                         {
                             key: discovery.display_name
-                            for key, discovery in self._discoveries.items()
+                            for key, discovery in ordered
                         }
                     )
                 }
             ),
             errors=errors,
+        )
+
+    async def async_step_already_configured(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Offer recovery when discovery only found configured devices."""
+        if user_input is not None:
+            if user_input.get("next_step_id") == "scan":
+                return await self.async_step_scan()
+            if user_input.get("next_step_id") == "manual":
+                return await self.async_step_manual()
+        return self.async_show_menu(
+            step_id="already_configured",
+            menu_options=["scan", "manual"],
         )
 
     async def async_step_discovery_failed(
@@ -200,9 +242,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             software_version="unknown",
         )
         await self.async_set_unique_id(identity.serial, raise_on_progress=False)
-        existing_entry = self.hass.config_entries.async_entry_for_domain_unique_id(
-            DOMAIN, identity.serial
-        )
+        existing_entry = self._existing_entry_for_discovery(discovery)
         if existing_entry is not None:
             if existing_entry.data[CONF_HOST] != discovery.host:
                 return self.async_update_reload_and_abort(

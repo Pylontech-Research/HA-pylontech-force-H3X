@@ -194,7 +194,7 @@ class TestFH3XDiscovery(unittest.TestCase):
         )
         assert first is not None and moved is not None
 
-        self.assertEqual(DISCOVERY.deduplicate_discoveries([first, moved]), [first])
+        self.assertEqual(DISCOVERY.deduplicate_discoveries([first, moved]), [moved])
 
     def test_enabled_adapters_define_local_networks(self) -> None:
         adapters = [
@@ -242,6 +242,8 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
                 side_effect=[OSError("multicast blocked"), fake_socket],
             ),
             patch.object(event_loop, "create_datagram_endpoint", create_endpoint),
+            patch.object(DISCOVERY, "MAX_DISCOVERY_ATTEMPTS", 1),
+            patch.object(DISCOVERY, "DISCOVERY_TOTAL_WINDOW", 1),
         ):
             result = await DISCOVERY.async_discover_fh3x(object(), timeout=0)
 
@@ -282,9 +284,9 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
             ),
             patch.object(event_loop, "create_datagram_endpoint", create_endpoint),
             patch.object(DISCOVERY, "MAX_DISCOVERY_ATTEMPTS", 3),
-            patch.object(DISCOVERY, "POST_RESPONSE_LISTEN_WINDOW", 0),
+            patch.object(DISCOVERY, "DISCOVERY_TOTAL_WINDOW", 1),
         ):
-            await DISCOVERY.async_discover_fh3x(object(), timeout=0.001)
+            await DISCOVERY.async_discover_fh3x(object(), timeout=0.01)
 
         self.assertEqual(multicast_transport.sendto.call_count, 3)
         self.assertEqual(broadcast_transport.sendto.call_count, 3)

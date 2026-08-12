@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.23 - 2026-08-12
+
+- Extend FH3X discovery to a 15-second total window for slow second devices.
+- Keep up to three M-SEARCH attempts while collecting late responses.
+- Report duplicate USNs from different IPs and keep the latest address.
+- Add recovery and manual-add paths when discovery finds only configured devices.
+
 ## 0.6.22 - 2026-08-12
 
 - Use FH3X SSDP USN as the stable discovery and config-flow deduplication key.

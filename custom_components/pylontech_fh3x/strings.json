@@ -23,6 +23,14 @@
           "manual": "Enter address manually"
         }
       },
+      "already_configured": {
+        "title": "Force H3X already configured",
+        "description": "The scan found only a device that is already configured. Add another device manually or scan again.",
+        "menu_options": {
+          "scan": "Scan again",
+          "manual": "Add another device manually"
+        }
+      },
       "discovery_validation_failed": {
         "title": "Force H3X verification failed",
         "description": "A device answered discovery, but its FH3X identity could not be verified over Modbus TCP.",

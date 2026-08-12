@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 MAX_DISCOVERY_ATTEMPTS = 3
 RESPONSE_WINDOW = 3.5
-POST_RESPONSE_LISTEN_WINDOW = 3.0
+DISCOVERY_TOTAL_WINDOW = 15.0
 # Backwards-compatible name for callers that used the old timeout constant.
 DISCOVERY_TIMEOUT = RESPONSE_WINDOW
 MULTICAST_ADDRESS = "239.101.1.250"
@@ -136,7 +136,17 @@ def deduplicate_discoveries(
     """Deduplicate multicast and broadcast responses while preserving order."""
     unique: dict[tuple[str, str], FH3XDiscoveryInfo] = {}
     for discovered in discoveries:
-        unique.setdefault(discovered.deduplication_key, discovered)
+        key = discovered.deduplication_key
+        previous = unique.get(key)
+        if previous is not None and previous.host != discovered.host and discovered.usn:
+            _LOGGER.warning(
+                "FH3X discovery reported USN %s from multiple IPs: %s and %s; "
+                "using the latest response",
+                discovered.usn,
+                previous.host,
+                discovered.host,
+            )
+        unique[key] = discovered
     return list(unique.values())
 
 
@@ -293,9 +303,12 @@ async def async_discover_fh3x(
 
         if not transports:
             return []
-        # MX is a maximum response delay. Send once, wait for the complete
-        # response window, and only retry if no valid FH3X response arrived.
+        # MX is a maximum response delay. Retry at most three times, but keep
+        # listening for late devices until the total discovery window ends.
+        deadline = loop.time() + DISCOVERY_TOTAL_WINDOW
         for attempt in range(1, MAX_DISCOVERY_ATTEMPTS + 1):
+            if loop.time() >= deadline:
+                break
             response_event.clear()
             for transport, destination, local_address, source_port in requests:
                 try:
@@ -325,18 +338,17 @@ async def async_discover_fh3x(
                     destination[1],
                 )
             try:
-                await asyncio.wait_for(response_event.wait(), timeout=timeout)
+                remaining = min(timeout, max(0, deadline - loop.time()))
+                await asyncio.wait_for(response_event.wait(), timeout=remaining)
             except asyncio.TimeoutError:
-                if timeout <= 0:
-                    break
-                if attempt < MAX_DISCOVERY_ATTEMPTS:
+                if attempt < MAX_DISCOVERY_ATTEMPTS and loop.time() < deadline:
                     continue
                 break
-
-            # Stop sending after the first valid response, but leave the
-            # listeners open briefly so other FH3X devices can answer.
-            await asyncio.sleep(POST_RESPONSE_LISTEN_WINDOW)
             break
+
+        remaining = deadline - loop.time()
+        if remaining > 0:
+            await asyncio.sleep(remaining)
     finally:
         for transport in transports:
             transport.close()
