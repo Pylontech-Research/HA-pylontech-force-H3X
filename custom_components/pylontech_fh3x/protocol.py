@@ -38,6 +38,8 @@ BMS_DEVICE_INFO_ADDRESS = 0x1000
 BMS_DEVICE_INFO_COUNT = 0x101F - BMS_DEVICE_INFO_ADDRESS
 BMS_PILE_ADDRESS = 0x1400
 BMS_PILE_HEADER_COUNT = 0x60
+BMS_PILE_NOMINAL_ADDRESS = BMS_PILE_ADDRESS + 0x3A
+BMS_PILE_NOMINAL_COUNT = 2
 BMS_MODULE_VOLTAGE_OFFSET = 0x60
 BMS_MODULE_TEMPERATURE_OFFSET = 0xB0
 BMS_CELL_VOLTAGE_OFFSET = 0x100
@@ -449,6 +451,28 @@ def decode_bms_load_energy(registers: list[int]) -> dict[str, FH3XValue]:
     """Decode the BMS lifetime home-load counter from U32 Wh to kWh."""
     _require(registers, BMS_LOAD_ENERGY_COUNT, "BMS load energy")
     return {"home_load_energy": round(_u32(registers, 0) * 0.001, 3)}
+
+
+def decode_bms_nominal_capacity(
+    registers: list[int], pile_count: int = 1
+) -> dict[str, FH3XValue]:
+    """Decode one BMS pile's nominal voltage/Ah and total nominal energy."""
+    _require(registers, BMS_PILE_NOMINAL_COUNT, "BMS nominal capacity")
+    nominal_voltage = round(_u16(registers, 0) * 0.1, 1)
+    nominal_capacity_ah = _u16(registers, 1)
+    effective_pile_count = max(1, pile_count)
+    values: dict[str, FH3XValue] = {
+        "bms_pile_nominal_voltage": nominal_voltage,
+        "bms_pile_nominal_capacity": nominal_capacity_ah,
+        "battery_capacity_pile_count": effective_pile_count,
+    }
+    if nominal_voltage > 0 and nominal_capacity_ah > 0:
+        values["battery_capacity"] = round(
+            nominal_voltage * nominal_capacity_ah * effective_pile_count / 1000,
+            2,
+        )
+        values["battery_capacity_source"] = "bms_nominal"
+    return values
 
 
 def decode_active_power_controls(registers: list[int]) -> dict[str, FH3XValue]:

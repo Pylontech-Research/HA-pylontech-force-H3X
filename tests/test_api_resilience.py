@@ -232,6 +232,7 @@ class TestFH3XTransportResilience(unittest.IsolatedAsyncioTestCase):
 
     async def test_capacity_is_cached_and_zero_is_not_published(self) -> None:
         client = self._client(read_retries=0)
+        client._device_values["pcs_parallel_machine_count"] = 2
         registers = [0] * API.PCS_MONITOR_EXT_COUNT
         registers[49] = 1234
         client._async_read_registers = AsyncMock(return_value=registers)
@@ -239,11 +240,62 @@ class TestFH3XTransportResilience(unittest.IsolatedAsyncioTestCase):
         values = await client._async_read_optional_monitor_ext()
         self.assertEqual(values["battery_capacity"], 12.34)
         self.assertEqual(client._device_values["battery_capacity"], 12.34)
+        self.assertEqual(
+            client._device_values["battery_capacity_source"], "pcs_parallel"
+        )
 
         registers[49] = 0
         values = await client._async_read_optional_monitor_ext()
         self.assertNotIn("battery_capacity", values)
         self.assertEqual(client._device_values["battery_capacity"], 12.34)
+
+    async def test_single_pcs_does_not_use_parallel_capacity(self) -> None:
+        client = self._client(read_retries=0)
+        client._device_values["pcs_parallel_machine_count"] = 1
+        registers = [0] * API.PCS_MONITOR_EXT_COUNT
+        registers[49] = 1234
+        client._async_read_registers = AsyncMock(return_value=registers)
+
+        values = await client._async_read_optional_monitor_ext()
+
+        self.assertNotIn("battery_capacity", values)
+        self.assertNotIn("battery_capacity", client._device_values)
+
+    async def test_single_capacity_uses_and_caches_bms_nominal_values(self) -> None:
+        client = self._client(read_retries=0)
+        client._device_values["pcs_parallel_machine_count"] = 0
+        read = AsyncMock(return_value=[1024, 50])
+        client._async_read_registers = read
+
+        values = await client._async_read_optional_battery_capacity(
+            {"bms_parallel_pile_count": 1}
+        )
+
+        self.assertEqual(values["battery_capacity"], 5.12)
+        self.assertEqual(values["battery_capacity_source"], "bms_nominal")
+        read.assert_awaited_once_with(API.BMS_PILE_NOMINAL_ADDRESS, 2, 1)
+
+        read.reset_mock()
+        self.assertEqual(
+            await client._async_read_optional_battery_capacity(
+                {"bms_parallel_pile_count": 1}
+            ),
+            {},
+        )
+        read.assert_not_awaited()
+
+    async def test_parallel_pcs_skips_bms_nominal_capacity(self) -> None:
+        client = self._client(read_retries=0)
+        client._device_values["pcs_parallel_machine_count"] = 2
+        read = AsyncMock()
+        client._async_read_registers = read
+
+        values = await client._async_read_optional_battery_capacity(
+            {"bms_parallel_pile_count": 2}
+        )
+
+        self.assertEqual(values, {})
+        read.assert_not_awaited()
 
     async def test_write_waits_when_switching_from_bms_to_pcs(self) -> None:
         client = self._client(read_retries=0)

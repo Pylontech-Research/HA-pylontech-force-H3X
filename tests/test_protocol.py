@@ -35,6 +35,7 @@ decode_bms = PROTOCOL.decode_bms
 decode_bms_detail_values = PROTOCOL.decode_bms_detail_values
 decode_bms_device_info = PROTOCOL.decode_bms_device_info
 decode_bms_load_energy = PROTOCOL.decode_bms_load_energy
+decode_bms_nominal_capacity = PROTOCOL.decode_bms_nominal_capacity
 decode_bms_pile_header = PROTOCOL.decode_bms_pile_header
 decode_device_info_ext = PROTOCOL.decode_device_info_ext
 decode_energy_management_controls = PROTOCOL.decode_energy_management_controls
@@ -307,6 +308,24 @@ class TestFH3XProtocol(unittest.TestCase):
         values = decode_bms_load_energy(registers)
 
         self.assertEqual(values["home_load_energy"], 613.25)
+
+    def test_bms_nominal_capacity_converts_voltage_and_ah_to_kwh(self) -> None:
+        values = decode_bms_nominal_capacity([1024, 50])
+
+        self.assertEqual(values["bms_pile_nominal_voltage"], 102.4)
+        self.assertEqual(values["bms_pile_nominal_capacity"], 50)
+        self.assertEqual(values["battery_capacity"], 5.12)
+        self.assertEqual(values["battery_capacity_source"], "bms_nominal")
+
+        parallel_batteries = decode_bms_nominal_capacity([1024, 50], pile_count=2)
+        self.assertEqual(parallel_batteries["battery_capacity"], 10.24)
+        self.assertEqual(parallel_batteries["battery_capacity_pile_count"], 2)
+
+    def test_bms_zero_nominal_capacity_is_not_published(self) -> None:
+        values = decode_bms_nominal_capacity([1024, 0])
+
+        self.assertNotIn("battery_capacity", values)
+        self.assertNotIn("battery_capacity_source", values)
 
     def test_bms_system_values(self) -> None:
         registers = [0] * BMS_SYSTEM_COUNT

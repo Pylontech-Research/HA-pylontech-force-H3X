@@ -30,6 +30,8 @@ from .protocol import (
     BMS_PARALLEL_LOAD_ENERGY_ADDRESS,
     BMS_PILE_ADDRESS,
     BMS_PILE_HEADER_COUNT,
+    BMS_PILE_NOMINAL_ADDRESS,
+    BMS_PILE_NOMINAL_COUNT,
     BMS_SYSTEM_ADDRESS,
     BMS_SYSTEM_COUNT,
     PCS_ACTIVE_POWER_CONTROL_ADDRESS,
@@ -57,6 +59,7 @@ from .protocol import (
     decode_bms_detail_values,
     decode_bms_device_info,
     decode_bms_load_energy,
+    decode_bms_nominal_capacity,
     decode_bms_pile_header,
     decode_device_info_ext,
     decode_energy_management_controls,
@@ -310,13 +313,58 @@ class FH3XModbusClient:
             return {}
         values = decode_pcs_monitor_ext(registers)
         capacity = values.get("battery_capacity")
-        if isinstance(capacity, int | float) and capacity > 0:
+        parallel_count = self._device_values.get("pcs_parallel_machine_count", 0)
+        is_parallel = isinstance(parallel_count, int | float) and parallel_count > 1
+        if is_parallel and isinstance(capacity, int | float) and capacity > 0:
             self._device_values["battery_capacity"] = capacity
+            self._device_values["battery_capacity_source"] = "pcs_parallel"
         else:
-            # A zero from an unavailable extended register must not replace a
-            # previously confirmed static capacity or become a fake value.
+            # 30649 is explicitly a parallel-system value. It must not become
+            # a single-system capacity even if a firmware happens to fill it.
             values.pop("battery_capacity", None)
         return values
+
+    async def _async_read_optional_battery_capacity(
+        self, bms_values: dict[str, FH3XValue]
+    ) -> dict[str, FH3XValue]:
+        """Select PCS parallel capacity or calculate a non-parallel BMS value."""
+        parallel_count = self._device_values.get("pcs_parallel_machine_count", 0)
+        if isinstance(parallel_count, int | float) and parallel_count > 1:
+            if self._device_values.get("battery_capacity_source") == "bms_nominal":
+                for key in (
+                    "battery_capacity",
+                    "battery_capacity_source",
+                    "battery_capacity_pile_count",
+                    "bms_pile_nominal_voltage",
+                    "bms_pile_nominal_capacity",
+                ):
+                    self._device_values.pop(key, None)
+            return {}
+
+        if (
+            self._device_values.get("battery_capacity_source") == "bms_nominal"
+            and isinstance(self._device_values.get("battery_capacity"), int | float)
+        ):
+            return {}
+
+        try:
+            registers = await self._async_read_registers(
+                BMS_PILE_NOMINAL_ADDRESS,
+                BMS_PILE_NOMINAL_COUNT,
+                BMS_DEVICE_ID,
+            )
+        except FH3XError as err:
+            _LOGGER.debug("FH3X BMS nominal capacity is unavailable: %s", err)
+            return {}
+
+        pile_count = bms_values.get("bms_parallel_pile_count", 1)
+        decoded = decode_bms_nominal_capacity(
+            registers,
+            int(pile_count) if isinstance(pile_count, int | float) else 1,
+        )
+        if "battery_capacity" in decoded:
+            self._device_values.update(decoded)
+        return decoded
 
     async def _async_read_optional_load_energy(self) -> dict[str, FH3XValue]:
         """Read and stabilize the BMS lifetime home-load energy counter."""
@@ -554,6 +602,9 @@ class FH3XModbusClient:
                 BMS_DEVICE_ID,
             )
             bms_values = decode_bms(bms_registers)
+            capacity_values = await self._async_read_optional_battery_capacity(
+                bms_values
+            )
             load_energy_values = await self._async_read_optional_load_energy()
             detailed_bms_values = await self._async_read_detailed_bms(bms_values)
 
@@ -561,6 +612,7 @@ class FH3XModbusClient:
         values.update(self._device_values)
         values.update(monitor_ext_values)
         values.update(bms_values)
+        values.update(capacity_values)
         values.update(load_energy_values)
         values.update(detailed_bms_values)
         values.update(control_values)

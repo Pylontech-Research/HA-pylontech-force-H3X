@@ -12,7 +12,7 @@ OTA features are intentionally excluded.
 | PCS extended identity | 2 | 30036–30078 | Optional, implemented | Rating, safety type, parallel mode/count, AFCI version |
 | PCS live monitor | 2 | 30100–30198 | Implemented | PV, AC, grid, battery, EPS, energy, three-phase and diagnostic values |
 | PCS grid substate | 2 | 30160 | Implemented | Grid-connected state; unknown enum values remain unavailable |
-| PCS extended monitor | 2 | 30600–30669 | Optional, implemented | Backup/EPS phases, parallel-system totals, meter and flow energy; 30649 provides battery capacity when non-zero |
+| PCS extended monitor | 2 | 30600–30669 | Optional, implemented | Backup/EPS phases, parallel-system totals, meter and flow energy; 30649 provides capacity only when multiple PCS units are reported |
 | Active power control | 2 | 40400–40402 | Implemented | Mode readback and export-limit control |
 | Internal heat-pump control | 2 | 40848 | Implemented | Advanced Controls switch |
 | EMS and four periods | 2 | 40901–40931 | Implemented | EMS/EPS and period enable switches are daily Controls; full period details are Advanced Configuration |
@@ -21,6 +21,7 @@ OTA features are intentionally excluded.
 | BMS aggregate system | 1 | 0x1100–0x114E | Implemented | SOC/SOH, limits, energy, extrema, channels, flags and alarms |
 | BMS lifetime load energy | 1 | 0x0691–0x0692 / 0x06D1–0x06D2 | Optional, implemented | Single/parallel-system home-load energy; unavailable after three failed reads |
 | BMS single-pile header | 1 | 0x1400–0x145F | Optional, implemented | Pile identity and summary when detailed BMS is enabled |
+| BMS nominal capacity | 1 | 0x143A–0x143B | Optional, implemented | Non-PCS-parallel capacity from nominal voltage × Ah × BMS pile count |
 | BMS module arrays | 1 | 0x1460+, 0x14B0+ | Optional, implemented | Per-module voltage and temperature, disabled by default |
 | BMS cell arrays | 1 | 0x1500+, 0x1800+ | Optional, implemented | Per-cell voltage and temperature, disabled by default |
 

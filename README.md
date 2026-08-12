@@ -16,7 +16,8 @@ No cloud account is required.
 - One coordinated poll shared by every entity.
 - PCS identity, operating state, PV1/PV2/PV3, grid, load and battery values.
 - Everyday grid context: connection state, three-phase average voltage/current
-  and frequency, plus battery capacity when reported by the PCS.
+  and frequency, plus battery capacity from PCS parallel totals or BMS nominal
+  voltage/Ah for a non-parallel PCS.
 - BMS SOC, SOH, cycles, temperatures, cell voltage limits and alarms.
 - BMS lifetime home-load energy when the installed firmware supports the
   dedicated single/parallel-system counter.
