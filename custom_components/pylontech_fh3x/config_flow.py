@@ -90,7 +90,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if not self._discoveries:
             return await self.async_step_discovery_failed()
         if len(self._discoveries) == 1:
-            return await self._async_validate_discovery(
+            return await self._async_accept_discovery(
                 next(iter(self._discoveries.values()))
             )
         return await self.async_step_select_device()
@@ -105,7 +105,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if selected is None:
                 errors["base"] = "discovery_expired"
             else:
-                return await self._async_validate_discovery(selected)
+                return await self._async_accept_discovery(selected)
 
         return self.async_show_form(
             step_id="select_device",
@@ -183,53 +183,34 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
+    async def _async_accept_discovery(
+        self, discovery: FH3XDiscoveryInfo
+    ) -> ConfigFlowResult:
+        """Accept an SSDP candidate without blocking on Modbus validation."""
+        data = {CONF_HOST: discovery.host, CONF_PORT: discovery.port}
+        serial = discovery.usn or discovery.host
+        identity = FH3XIdentity(
+            manufacturer="Pylontech",
+            model=discovery.server or DEFAULT_NAME,
+            serial=f"ssdp-{serial}",
+            software_version="unknown",
+        )
+        await self.async_set_unique_id(identity.serial, raise_on_progress=False)
+        self._pending_data = data
+        self._pending_identity = identity
+        self.context["title_placeholders"] = {"name": identity.model}
+        return await self.async_step_confirm()
+
     async def _async_validate_discovery(
         self, discovery: FH3XDiscoveryInfo
     ) -> ConfigFlowResult:
-        """Validate a UDP candidate using the authoritative Modbus identity."""
-        data = {CONF_HOST: discovery.host, CONF_PORT: discovery.port}
-        identity: FH3XIdentity | None = None
-        for attempt in range(2):
-            try:
-                identity = await async_validate_input(self.hass, data)
-                break
-            except (FH3XConnectionError, FH3XProtocolError) as err:
-                _LOGGER.warning(
-                    "FH3X discovery validation failed for %s (attempt %s/2): %s",
-                    discovery.host,
-                    attempt + 1,
-                    err,
-                )
-            except Exception:
-                _LOGGER.exception(
-                    "Unexpected exception validating discovered FH3X (attempt %s/2)",
-                    attempt + 1,
-                )
-        if identity is None:
-            return await self.async_step_discovery_validation_failed()
-
-        await self.async_set_unique_id(identity.serial, raise_on_progress=False)
-        existing_entry = self.hass.config_entries.async_entry_for_domain_unique_id(
-            DOMAIN, identity.serial
-        )
-        if existing_entry is not None:
-            if existing_entry.data[CONF_HOST] != discovery.host:
-                return self.async_update_reload_and_abort(
-                    existing_entry,
-                    data_updates={CONF_HOST: discovery.host},
-                    reason="already_configured",
-                )
-            return self.async_abort(reason="already_configured")
-
-        self._pending_data = data
-        self._pending_identity = identity
-        self.context["title_placeholders"] = {"name": identity.model or DEFAULT_NAME}
-        return await self.async_step_confirm()
+        """Compatibility wrapper for callers using the former method name."""
+        return await self._async_accept_discovery(discovery)
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Confirm a Modbus-validated discovered FH3X."""
+        """Confirm a discovered FH3X before creating the config entry."""
         if self._pending_data is None or self._pending_identity is None:
             return self.async_abort(reason="discovery_expired")
         if user_input is not None:

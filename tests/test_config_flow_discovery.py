@@ -231,19 +231,16 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["step_id"], "discovery_failed")
         self.assertEqual(result["menu_options"], ["scan", "manual"])
 
-    async def test_single_device_is_modbus_validated_before_confirmation(self) -> None:
+    async def test_single_device_reaches_confirmation_without_modbus(self) -> None:
         flow = self._flow()
         discovery.async_discover_fh3x.return_value = [_Discovery("192.168.1.20")]
-        identity = _Identity("Pylontech", "FH3X-12K", "MODBUS-123", "V1")
-
-        with patch.object(
-            CONFIG_FLOW, "async_validate_input", AsyncMock(return_value=identity)
-        ):
+        with patch.object(CONFIG_FLOW, "async_validate_input") as validate:
             result = await flow.async_step_user()
+            validate.assert_not_called()
 
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "confirm")
-        self.assertEqual(flow.unique_id, "MODBUS-123")
+        self.assertEqual(flow.unique_id, "ssdp-UDP-SERIAL")
         self.assertEqual(result["description_placeholders"]["host"], "192.168.1.20")
 
         created = await flow.async_step_confirm({})
@@ -263,64 +260,21 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["step_id"], "select_device")
         self.assertEqual(len(flow._discoveries), 2)
 
-    async def test_udp_usn_is_not_used_as_unique_id(self) -> None:
+    async def test_udp_usn_is_used_until_modbus_identity_is_available(self) -> None:
         flow = self._flow()
         candidate = _Discovery("192.168.1.20", usn="UNTRUSTED-UDP")
-        identity = _Identity("Pylontech", "FH3X", "TRUSTED-MODBUS", "V1")
+        await flow._async_validate_discovery(candidate)
+        self.assertEqual(flow.unique_id, "ssdp-UNTRUSTED-UDP")
 
-        with patch.object(
-            CONFIG_FLOW, "async_validate_input", AsyncMock(return_value=identity)
-        ):
-            await flow._async_validate_discovery(candidate)
-
-        self.assertEqual(flow.unique_id, "TRUSTED-MODBUS")
-
-    async def test_rediscovery_updates_existing_host(self) -> None:
+    async def test_rediscovery_does_not_block_on_modbus_identity(self) -> None:
         flow = self._flow()
         entry = _Entry({"host": "192.168.1.10", "port": 502})
         flow.hass.config_entries.existing = entry
-        identity = _Identity("Pylontech", "FH3X", "MODBUS-123", "V1")
-
-        with patch.object(
-            CONFIG_FLOW, "async_validate_input", AsyncMock(return_value=identity)
-        ):
-            result = await flow._async_validate_discovery(_Discovery("192.168.1.20"))
-
-        self.assertEqual(result["type"], "abort")
-        self.assertEqual(result["reason"], "already_configured")
-        self.assertEqual(entry.data["host"], "192.168.1.20")
-
-    async def test_modbus_validation_failure_offers_retry_or_manual(self) -> None:
-        flow = self._flow()
-
-        with patch.object(
-            CONFIG_FLOW,
-            "async_validate_input",
-            AsyncMock(side_effect=_ConnectionError),
-        ):
-            result = await flow._async_validate_discovery(_Discovery("192.168.1.20"))
-
-        self.assertEqual(result["type"], "menu")
-        self.assertEqual(result["step_id"], "discovery_validation_failed")
-        self.assertEqual(result["menu_options"], ["scan", "manual"])
-
-    async def test_validation_failure_menu_can_start_scan(self) -> None:
-        flow = self._flow()
-        result = await flow.async_step_discovery_validation_failed(
-            {"next_step_id": "scan"}
-        )
-
-        self.assertEqual(result["type"], "menu")
-        self.assertEqual(result["step_id"], "discovery_failed")
-
-    async def test_validation_failure_menu_can_start_manual_setup(self) -> None:
-        flow = self._flow()
-        result = await flow.async_step_discovery_validation_failed(
-            {"next_step_id": "manual"}
-        )
+        result = await flow._async_validate_discovery(_Discovery("192.168.1.20"))
 
         self.assertEqual(result["type"], "form")
-        self.assertEqual(result["step_id"], "manual")
+        self.assertEqual(result["step_id"], "confirm")
+        self.assertEqual(entry.data["host"], "192.168.1.10")
 
     async def test_manual_fallback_preserves_existing_form(self) -> None:
         flow = self._flow()

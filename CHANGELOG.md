@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.21 - 2026-08-12
+
+- Do not block SSDP discovery confirmation on a Modbus identity read.
+- Use the discovered USN/IP as a temporary setup identity; normal device
+  polling continues to read the authoritative PCS identity after setup.
+- Keep Modbus validation for manual address entry.
+
 ## 0.6.20 - 2026-08-12
 
 - Limit FH3X discovery to three M-SEARCH attempts with a full response window
