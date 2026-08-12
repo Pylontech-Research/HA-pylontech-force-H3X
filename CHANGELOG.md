@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.19 - 2026-08-12
+
+- Repeat FH3X M-SEARCH requests throughout the discovery window so a single
+  lost UDP packet does not cause a false discovery failure.
+- Bind the broadcast listener to the wildcard address, keeping discovery
+  working after Ethernet/Wi-Fi address changes.
+- Keep retry socket errors isolated and close all discovery transports safely.
+
 ## 0.6.18 - 2026-08-12
 
 - Accept FH3X discovery responses received from another private subnet and

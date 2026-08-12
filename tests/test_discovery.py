@@ -150,6 +150,11 @@ class TestFH3XDiscovery(unittest.TestCase):
 
         self.assertIs(result, sock)
         sock.bind.assert_called_once_with(("", 1901))
+        sock.setsockopt.assert_any_call(
+            DISCOVERY.socket.IPPROTO_IP,
+            DISCOVERY.socket.IP_MULTICAST_IF,
+            DISCOVERY.socket.inet_aton("192.168.137.1"),
+        )
 
     def test_deduplicates_multicast_and_broadcast_responses(self) -> None:
         first = DISCOVERY.parse_discovery_response(
@@ -236,6 +241,43 @@ class TestFH3XAsyncDiscovery(unittest.IsolatedAsyncioTestCase):
             (DISCOVERY.BROADCAST_ADDRESS, DISCOVERY.BROADCAST_PORT),
         )
         transport.close.assert_called_once()
+
+    async def test_repeats_requests_during_discovery_window(self) -> None:
+        DISCOVERY.network.async_get_adapters = AsyncMock(
+            return_value=[
+                {
+                    "enabled": True,
+                    "ipv4": [{"address": "192.168.137.1", "network_prefix": 24}],
+                }
+            ]
+        )
+        multicast_socket = MagicMock()
+        broadcast_socket = MagicMock()
+        multicast_transport = MagicMock()
+        broadcast_transport = MagicMock()
+        event_loop = asyncio.get_running_loop()
+        create_endpoint = AsyncMock(
+            side_effect=[
+                (multicast_transport, MagicMock()),
+                (broadcast_transport, MagicMock()),
+            ]
+        )
+
+        with (
+            patch.object(
+                DISCOVERY,
+                "_create_socket",
+                side_effect=[multicast_socket, broadcast_socket],
+            ),
+            patch.object(event_loop, "create_datagram_endpoint", create_endpoint),
+            patch.object(DISCOVERY, "DISCOVERY_SEND_INTERVAL", 0.01),
+        ):
+            await DISCOVERY.async_discover_fh3x(object(), timeout=0.025)
+
+        self.assertGreaterEqual(multicast_transport.sendto.call_count, 2)
+        self.assertGreaterEqual(broadcast_transport.sendto.call_count, 2)
+        multicast_transport.close.assert_called_once()
+        broadcast_transport.close.assert_called_once()
 
     async def test_cancellation_closes_every_transport(self) -> None:
         DISCOVERY.network.async_get_adapters = AsyncMock(

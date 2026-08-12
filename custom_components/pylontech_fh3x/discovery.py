@@ -19,6 +19,7 @@ from .const import DEFAULT_PORT
 _LOGGER = logging.getLogger(__name__)
 
 DISCOVERY_TIMEOUT = 4.0
+DISCOVERY_SEND_INTERVAL = 1.0
 MULTICAST_ADDRESS = "239.101.1.250"
 MULTICAST_PORT = 1900
 MULTICAST_SOURCE_PORT = 1901
@@ -197,21 +198,24 @@ def _create_socket(local_address: str, *, broadcast: bool) -> socket.socket:
     if broadcast:
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     else:
-        # Do not force IP_MULTICAST_IF here. On HA OS, the network API exposes
-        # the host adapter address while the integration runs in the Core
-        # container; forcing that host address makes bind/send fail or sends
-        # through the wrong namespace. The kernel route selects the correct
-        # interface for the multicast destination.
+        # The device only responds after receiving M-SEARCH on its proprietary
+        # multicast group.  HA may have several network paths (for example a
+        # USB/Ethernet shared network plus the Supervisor bridge), so select
+        # the enabled adapter explicitly instead of letting the default route
+        # choose a possibly unrelated interface.
+        sock.setsockopt(
+            socket.IPPROTO_IP,
+            socket.IP_MULTICAST_IF,
+            socket.inet_aton(local_address),
+        )
         sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, struct.pack("B", 2))
     # HA's built-in standards-compliant SSDP scanner already owns UDP 1900.
     # FH3X replies to the request's source port, so use the verified alternate
     # port 1901 and avoid competing with the built-in SSDP socket.
-    sock.bind(
-        (
-            local_address if broadcast else "",
-            BROADCAST_PORT if broadcast else MULTICAST_SOURCE_PORT,
-        )
-    )
+    # Binding broadcast to the adapter address becomes invalid when HA's
+    # network manager has a stale address during a Wi-Fi/Ethernet handover.
+    # An unspecified local address lets the kernel select the current route.
+    sock.bind(("", BROADCAST_PORT if broadcast else MULTICAST_SOURCE_PORT))
     sock.setblocking(False)
     return sock
 
@@ -231,6 +235,9 @@ async def async_discover_fh3x(
     local_networks = tuple(network_ for _, network_ in interfaces)
     results: list[FH3XDiscoveryInfo] = []
     transports: list[asyncio.DatagramTransport] = []
+    requests: list[
+        tuple[asyncio.DatagramTransport, tuple[str, int], str, int]
+    ] = []
 
     try:
         for local_address, _local_network in interfaces:
@@ -247,6 +254,16 @@ async def async_discover_fh3x(
                     )
                     transports.append(transport)
                     transport.sendto(request, destination)
+                    requests.append(
+                        (
+                            transport,
+                            destination,
+                            local_address,
+                            BROADCAST_PORT
+                            if is_broadcast
+                            else MULTICAST_SOURCE_PORT,
+                        )
+                    )
                     _LOGGER.debug(
                         "FH3X discovery sent from %s:%s to %s:%s",
                         local_address,
@@ -266,7 +283,39 @@ async def async_discover_fh3x(
 
         if not transports:
             return []
-        await asyncio.sleep(timeout)
+        # MX is a maximum response delay, not a guarantee that one packet is
+        # enough.  Repeat while the discovery window is open so a lost UDP
+        # datagram or a Wi-Fi handover does not turn into a false failure.
+        deadline = loop.time() + timeout
+        while True:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                break
+            await asyncio.sleep(min(DISCOVERY_SEND_INTERVAL, remaining))
+            for transport, destination, local_address, source_port in requests:
+                try:
+                    transport.sendto(
+                        _BROADCAST_REQUEST
+                        if destination[0] == BROADCAST_ADDRESS
+                        else _MULTICAST_REQUEST,
+                        destination,
+                    )
+                except OSError as err:
+                    _LOGGER.debug(
+                        "Unable to retry FH3X discovery from %s:%s to %s:%s: %s",
+                        local_address,
+                        source_port,
+                        destination[0],
+                        destination[1],
+                        err,
+                    )
+                _LOGGER.debug(
+                    "FH3X discovery retry from %s:%s to %s:%s",
+                    local_address,
+                    source_port,
+                    destination[0],
+                    destination[1],
+                )
     finally:
         for transport in transports:
             transport.close()
