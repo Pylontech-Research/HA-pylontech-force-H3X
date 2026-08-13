@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.25 - 2026-08-13
+
+- Complete long-running discovery with `async_show_progress_done` before
+  transitioning to device selection or recovery, preventing HA's progress
+  state-machine error and blank config-flow screens.
+
 ## 0.6.24 - 2026-08-12
 
 - Show a native Home Assistant config-flow progress screen during the

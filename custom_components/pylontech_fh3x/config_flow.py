@@ -63,6 +63,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._pending_data: dict[str, Any] | None = None
         self._pending_identity: FH3XIdentity | None = None
         self._scan_task: asyncio.Task[list[FH3XDiscoveryInfo]] | None = None
+        self._scan_results: list[FH3XDiscoveryInfo] | None = None
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -98,13 +99,17 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         finally:
             self._scan_task = None
 
-        return await self._async_process_discoveries(discoveries)
+        self._scan_results = discoveries
+        return self.async_show_progress_done(next_step_id="scan_done")
 
     async def async_step_scan_done(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Resume the flow after Home Assistant completes the scan task."""
-        return await self.async_step_scan(user_input)
+        del user_input
+        discoveries = self._scan_results or []
+        self._scan_results = None
+        return await self._async_process_discoveries(discoveries)
 
     async def _async_process_discoveries(
         self, discoveries: list[FH3XDiscoveryInfo]

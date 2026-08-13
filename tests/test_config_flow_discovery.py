@@ -75,6 +75,9 @@ class _ConfigFlowBase:
     def async_show_progress(self, **kwargs):
         return {"type": "progress", **kwargs}
 
+    def async_show_progress_done(self, **kwargs):
+        return {"type": "progress_done", **kwargs}
+
     def async_create_entry(self, **kwargs):
         return {"type": "create_entry", **kwargs}
 
@@ -240,6 +243,8 @@ class TestFH3XDiscoveryConfigFlow(unittest.IsolatedAsyncioTestCase):
         if result["type"] == "progress":
             await asyncio.sleep(0)
             result = await flow.async_step_scan()
+        if result["type"] == "progress_done":
+            result = await flow.async_step_scan_done()
         return result
 
     async def test_no_device_offers_rescan_and_manual_setup(self) -> None:
