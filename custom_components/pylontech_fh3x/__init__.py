@@ -4,11 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TypeAlias
 
-from homeassistant.components import panel_custom
-from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import HomeAssistant
@@ -37,8 +34,6 @@ PLATFORMS = [
     Platform.TIME,
 ]
 
-_PANEL_REGISTERED = "panel_registered"
-
 
 @dataclass
 class FH3XRuntimeData:
@@ -62,9 +57,6 @@ async def _async_apply_english_names_after_platform_setup(
 
 async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool:
     """Set up an FH3X from a config entry."""
-    if not hass.data.setdefault("pylontech_fh3x", {}).get(_PANEL_REGISTERED):
-        await _async_register_panel(hass)
-        hass.data["pylontech_fh3x"][_PANEL_REGISTERED] = True
     entity_profile = entry.options.get(CONF_ENTITY_PROFILE, DEFAULT_ENTITY_PROFILE)
     control_profile = entry.options.get(CONF_CONTROL_PROFILE, DEFAULT_CONTROL_PROFILE)
     # Apply the profile before touching the network. Existing installations
@@ -100,24 +92,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool
         "Apply FH3X English entity names",
     )
     return True
-
-
-async def _async_register_panel(hass: HomeAssistant) -> None:
-    """Register the local FH3X panel once for the HA instance."""
-    frontend_path = Path(__file__).parent / "frontend"
-    await hass.http.async_register_static_paths(
-        [StaticPathConfig("/pylontech_fh3x_panel", str(frontend_path), False)]
-    )
-    await panel_custom.async_register_panel(
-        hass,
-        webcomponent_name="fh3x-energy-panel",
-        frontend_url_path="fh3x",
-        sidebar_title="FH3X 能源中心",
-        sidebar_icon="mdi:solar-power-variant",
-        module_url="/pylontech_fh3x_panel/fh3x-panel.js?v=0.6.26",
-        embed_iframe=False,
-        require_admin=False,
-    )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool:
