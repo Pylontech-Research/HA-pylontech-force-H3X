@@ -47,4 +47,23 @@ export type AlarmItem = {
   state: "on" | "off" | "unavailable" | "unknown";
   issues: string[];
   code?: string | number;
+  issueIds?: string[];
+  rawStatus1?: number;
+  rawStatus2?: number;
+};
+
+export type AlarmEvent = {
+  when?: string;
+  timestamp?: string;
+  started_at?: string;
+  status?: string;
+  category?: string;
+  issues?: string[];
+  issue_ids?: string[];
+  raw_status_1?: number;
+  raw_status_2?: number;
+  message?: string;
+  name?: string;
+  entity_id?: string;
+  data?: Record<string, unknown>;
 };

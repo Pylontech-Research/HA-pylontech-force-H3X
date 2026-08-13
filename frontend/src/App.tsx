@@ -27,7 +27,7 @@ import { MetricCard } from "./components/MetricCard";
 import { StatusPill } from "./components/StatusPill";
 import { ENTITY_IDS } from "./ha/entities";
 import { selectOption, setNumber, setSwitch, setTime, useEnergyFlow } from "./ha/useHass";
-import type { AlarmItem, Hass } from "./ha/types";
+import type { AlarmEvent, AlarmItem, Hass } from "./ha/types";
 import { alarmItems, findEntity, formatEnergy, formatPower, numberState } from "./lib/normalize";
 
 type PageKey = "overview" | "solar" | "battery" | "load" | "grid" | "strategy" | "alerts" | "diagnostics" | "settings";
@@ -129,7 +129,32 @@ function StrategyPage({ hass }: { hass: Hass }) {
 }
 
 function AlarmCard({ alarm }: { alarm: AlarmItem }) { const active = alarm.state === "on"; return <div className={`alarm-row ${active ? "active" : ""}`}><span className={`alarm-icon ${active ? "danger" : "ok"}`}>{active ? <AlertTriangle size={17} /> : <CheckCircle2 size={17} />}</span><div><strong>{alarm.label}</strong><small>{active ? alarm.issues.join(" · ") || `故障码 ${alarm.code ?? "—"}` : "未检测到问题"}</small></div><b>{active ? "处理中" : "正常"}</b></div>; }
-function AlertsPage({ hass }: { hass: Hass }) { const alarms = useMemo(() => alarmItems(hass), [hass]); const active = alarms.filter((item) => item.state === "on").length; return <><PageHeader eyebrow="SAFETY & EVENTS" title="告警中心" description={active ? `${active} 项问题需要关注。` : "系统当前没有未处理的故障或警告。"} action={<span className={`alert-count ${active ? "has-alert" : ""}`}>{active} 当前告警</span>} /><section className="surface-card alarm-card"><div className="section-title"><div><span className="eyebrow">CURRENT STATUS</span><h2>当前状态</h2></div><ShieldCheck size={18} /></div>{alarms.map((alarm) => <AlarmCard key={alarm.id} alarm={alarm} />)}</section><section className="surface-card history-card"><div className="section-title"><div><span className="eyebrow">EVENT HISTORY</span><h2>历史事件</h2></div><span className="mono-note">由 HA 日志记录提供</span></div><div className="empty-note"><CheckCircle2 size={18} />当前没有历史事件可展示。</div></section></>; }
+function AlertsPage({ hass }: { hass: Hass }) {
+  const alarms = useMemo(() => alarmItems(hass), [hass]);
+  const active = alarms.filter((item) => item.state === "on").length;
+  const [events, setEvents] = useState<AlarmEvent[]>([]);
+  const [days, setDays] = useState(7);
+  const [historyError, setHistoryError] = useState(false);
+  useEffect(() => {
+    if (!hass.callWS) return;
+    const entityIds = Object.keys(hass.states).filter((id) =>
+      ["bms_alarm", "bms_protection", "inverter_fault", "inverter_warning"].some((key) => id.endsWith(`_${key}`)),
+    );
+    const end = new Date();
+    const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+    setHistoryError(false);
+    void hass.callWS({ type: "logbook/get_events", start_time: start.toISOString(), end_time: end.toISOString(), entity_ids: entityIds })
+      .then((result) => {
+        const raw = Array.isArray(result) ? result : (result && typeof result === "object" && Array.isArray((result as { events?: unknown }).events) ? (result as { events: unknown[] }).events : []);
+        setEvents(raw.filter((item): item is AlarmEvent => typeof item === "object" && item !== null).map((item) => {
+          const data = item.data && typeof item.data === "object" ? item.data : {};
+          return { ...data, ...item } as AlarmEvent;
+        }).filter((item) => item.category || item.entity_id?.includes("bms_alarm") || item.entity_id?.includes("bms_protection")));
+      })
+      .catch(() => setHistoryError(true));
+  }, [hass, days]);
+  return <><PageHeader eyebrow="SAFETY & EVENTS" title="告警中心" description={active ? `${active} 项问题需要关注。` : "系统当前没有未处理的故障或警告。"} action={<span className={`alert-count ${active ? "has-alert" : ""}`}>{active} 当前告警</span>} /><section className="surface-card alarm-card"><div className="section-title"><div><span className="eyebrow">CURRENT STATUS</span><h2>当前状态</h2></div><ShieldCheck size={18} /></div>{alarms.map((alarm) => <AlarmCard key={alarm.id} alarm={alarm} />)}</section><section className="surface-card history-card"><div className="section-title"><div><span className="eyebrow">EVENT HISTORY</span><h2>历史事件</h2></div><div className="range-tabs"><button className={days === 1 ? "active" : ""} onClick={() => setDays(1)}>24小时</button><button className={days === 7 ? "active" : ""} onClick={() => setDays(7)}>7天</button><button className={days === 30 ? "active" : ""} onClick={() => setDays(30)}>30天</button></div></div>{historyError ? <div className="empty-note"><AlertTriangle size={18} />无法读取 HA Logbook，请稍后重试。</div> : events.length === 0 ? <div className="empty-note"><CheckCircle2 size={18} />当前时间范围内没有告警事件。</div> : <div className="alarm-history-list">{events.map((event, index) => <div className="alarm-history-row" key={`${event.timestamp ?? event.when ?? "event"}-${index}`}><div><strong>{event.issues?.join(" · ") || event.message || event.category || "FH3X 告警"}</strong><small>{event.timestamp ?? event.when ?? "—"} · {event.status === "recovered" ? "已恢复" : event.status === "startup" ? "启动时检测到" : event.status === "updated" ? "告警更新" : "已触发"}</small></div><b>{event.category ?? "FH3X"}</b></div>)}</div>}</section></>;
+}
 
 function DiagnosticsPage({ hass }: { hass: Hass }) { return <><PageHeader eyebrow="ENGINEERING DATA" title="设备诊断" description="PCS、BMS 和通信链路的工程数据。" /><div className="metric-grid four"><MetricCard label="PCS" value={findEntity(hass, "inverterState")?.state ?? "—"} tone="cyan" icon={<Cpu size={17} />} /><MetricCard label="BMS" value={findEntity(hass, "batteryState")?.state ?? "—"} tone="violet" icon={<BatteryCharging size={17} />} /><MetricCard label="通信" value="在线" tone="cyan" icon={<Waves size={17} />} /><MetricCard label="协议" value="Modbus" unit="TCP" tone="blue" /></div><div className="diagnostic-grid"><section className="surface-card table-card"><div className="section-title"><div><span className="eyebrow">PCS MONITOR</span><h2>逆变器摘要</h2></div></div>{[["软件版本", "—"], ["最大输出", "— W"], ["R/S/T 电压", "— / — / — V"], ["频率", "— Hz"], ["故障位图", "0x00000000"]].map(([label, value]) => <div className="setting-row" key={label}><span>{label}</span><b>{value}</b></div>)}</section><section className="surface-card table-card"><div className="section-title"><div><span className="eyebrow">BMS SUMMARY</span><h2>电池管理系统</h2></div></div>{[["SOC", `${value(hass, "batterySoc") ?? "—"}%`], ["SOH", `${findEntity(hass, "bmsSoh")?.state ?? "—"}%`], ["循环次数", findEntity(hass, "bmsCycles")?.state ?? "—"], ["总电压", `${findEntity(hass, "bmsVoltage")?.state ?? "—"} V`], ["模块 / 电芯", "— / —"]].map(([label, value]) => <div className="setting-row" key={label}><span>{label}</span><b>{value}</b></div>)}</section></div></>; }
 

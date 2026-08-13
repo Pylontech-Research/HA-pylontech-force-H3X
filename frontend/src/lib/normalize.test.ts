@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { flowSnapshot } from "./normalize";
+import { findEntity, flowSnapshot } from "./normalize";
 import type { Hass } from "../ha/types";
 
 function hass(values: Record<string, string>, age = new Date().toISOString()): Hass {
@@ -39,5 +39,11 @@ describe("FH3X energy normalization", () => {
       "sensor.force_h3x_grid_power": "0",
       "sensor.force_h3x_battery_power": "0",
     }, veryOld), 10).availability).toBe("offline");
+  });
+
+  it("resolves entities generated from a real FH3X serial", () => {
+    const state = { entity_id: "sensor.fh3x6khy1pau_solar_power", state: "123", attributes: {} };
+    const real = { states: { [state.entity_id]: state }, callService: async () => undefined };
+    expect(findEntity(real, "pvPower")?.state).toBe("123");
   });
 });

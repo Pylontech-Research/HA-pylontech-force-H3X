@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import FH3XConfigEntry
+from .alarm_history import alarm_attributes
 from .entity import FH3XCoordinatorEntity
 from .protocol import FH3XValue
 
@@ -150,42 +151,21 @@ def _bit_names(bits: int, names: Mapping[int, str]) -> list[str]:
 
 
 def _pcs_fault_attributes(data: Mapping[str, FH3XValue]) -> Mapping[str, Any]:
-    bits = int(data.get("fault_bits", 0)) | (
-        int(data.get("fault_bits_extended", 0)) << 32
-    )
-    return {
-        "active_issues": _bit_names(bits, PCS_FAULTS),
-        "fault_code": data.get("fault_code", 0),
-    }
+    return alarm_attributes(data, "inverter_fault")
 
 
 def _pcs_warning_attributes(data: Mapping[str, FH3XValue]) -> Mapping[str, Any]:
-    bits = int(data.get("warning_bits", 0)) | (
-        int(data.get("warning_bits_extended", 0)) << 32
-    )
-    return {
-        "active_issues": _bit_names(bits, PCS_WARNINGS),
-        "warning_code": data.get("warning_code", 0),
-    }
+    return alarm_attributes(data, "inverter_warning")
 
 
 def _bms_protection_attributes(data: Mapping[str, FH3XValue]) -> Mapping[str, Any]:
-    return {
-        "active_issues": _bit_names(
-            int(data.get("bms_protection_status", 0)), BMS_PROTECTIONS
-        ),
-        "error_code_1": data.get("bms_error_code_1", 0),
-        "error_code_2": data.get("bms_error_code_2", 0),
-    }
+    attributes = alarm_attributes(data, "bms_protection")
+    attributes["error_code_2"] = data.get("bms_error_code_2", 0)
+    return attributes
 
 
 def _bms_alarm_attributes(data: Mapping[str, FH3XValue]) -> Mapping[str, Any]:
-    return {
-        "active_issues": _bit_names(
-            int(data.get("bms_alarm_status_1", 0)), BMS_ALARMS_1
-        )
-        + _bit_names(int(data.get("bms_alarm_status_2", 0)), BMS_ALARMS_2)
-    }
+    return alarm_attributes(data, "bms_alarm")
 
 
 def _grid_connected(data: Mapping[str, FH3XValue]) -> bool | None:
@@ -209,8 +189,9 @@ BINARY_SENSOR_DESCRIPTIONS = (
         translation_key="grid_connected",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
         is_on_fn=_grid_connected,
-        available_fn=lambda data: data.get("grid_operating_mode")
-        in {"grid_tied", "backup"},
+        available_fn=lambda data: (
+            data.get("grid_operating_mode") in {"grid_tied", "backup"}
+        ),
         attributes_fn=_grid_connection_attributes,
     ),
     FH3XBinarySensorEntityDescription(
@@ -347,4 +328,10 @@ class FH3XBinarySensor(FH3XCoordinatorEntity, BinarySensorEntity):
         """Return decoded active issue names and raw status context."""
         if self.entity_description.attributes_fn is None:
             return None
-        return self.entity_description.attributes_fn(self.coordinator.data.values)
+        attributes = dict(
+            self.entity_description.attributes_fn(self.coordinator.data.values)
+        )
+        tracker = getattr(self.coordinator, "_alarm_events", None)
+        if tracker is not None:
+            attributes.update(tracker.live_metadata(self.entity_description.key))
+        return attributes

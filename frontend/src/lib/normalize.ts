@@ -4,7 +4,18 @@ import type { AlarmItem, EnergyFlowSnapshot, EntityState, Hass } from "../ha/typ
 const now = () => Date.now();
 
 export function findEntity(hass: Hass, key: EntityKey): EntityState | undefined {
-  return ENTITY_IDS[key].map((id) => hass.states[id]).find(Boolean);
+  const direct = ENTITY_IDS[key].map((id) => hass.states[id]).find(Boolean);
+  if (direct) return direct;
+  // Entity IDs are generated from the device serial (for example
+  // ``sensor.fh3x6khy1pau_bms_alarm``), so the static demo IDs above cannot
+  // be the only lookup strategy for a real installation.
+  const suffixes = ENTITY_IDS[key].map((id) =>
+    id.replace(/^[^.]+\./, "").replace(/^force_h3x_/, ""),
+  );
+  return Object.entries(hass.states).find(([id]) => {
+    const objectId = id.replace(/^[^.]+\./, "");
+    return suffixes.some((suffix) => objectId === suffix || objectId.endsWith(`_${suffix}`));
+  })?.[1];
 }
 
 export function numberState(hass: Hass, key: EntityKey): number | null {
@@ -73,6 +84,11 @@ export function alarmItems(hass: Hass): AlarmItem[] {
       label,
       state,
       issues: issues(entity),
+      issueIds: Array.isArray(entity?.attributes.active_issue_ids)
+        ? entity.attributes.active_issue_ids.map(String)
+        : [],
+      rawStatus1: typeof entity?.attributes.raw_status_1 === "number" ? entity.attributes.raw_status_1 : undefined,
+      rawStatus2: typeof entity?.attributes.raw_status_2 === "number" ? entity.attributes.raw_status_2 : undefined,
       code: codeKey ? (entity?.attributes[codeKey] as string | number | undefined) : undefined,
     };
   });

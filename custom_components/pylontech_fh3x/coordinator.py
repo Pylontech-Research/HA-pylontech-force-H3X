@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .alarm_history import AlarmEventTracker
 from .api import FH3XError, FH3XModbusClient
 from .const import (
     CONF_SCAN_INTERVAL,
@@ -34,6 +35,7 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
     ) -> None:
         """Initialize the coordinator."""
         self.client = client
+        self._alarm_events: AlarmEventTracker | None = None
         self.poll_failure_state = PollFailureState(
             failure_threshold=MAX_CONSECUTIVE_POLL_FAILURES
         )
@@ -50,6 +52,9 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
             name=DOMAIN,
             update_interval=timedelta(seconds=scan_interval),
             always_update=False,
+        )
+        self._alarm_events = AlarmEventTracker(
+            hass, entry.data.get("serial", "FH3X"), entry.title or "FH3X"
         )
 
     async def _async_update_data(self) -> FH3XSnapshot:
@@ -74,6 +79,8 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
                 "FH3X communication recovered after %s failed poll(s)",
                 previous_failures,
             )
+        if self._alarm_events is not None:
+            self._alarm_events.process(snapshot)
         return snapshot
 
     async def async_write_u16(self, address: int, value: int) -> None:
