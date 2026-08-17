@@ -11,7 +11,8 @@ private addresses, or unredacted serial numbers.
 - [ ] HACS Action, Hassfest, Tests, and repository validation pass without ignored checks.
 - [ ] Local brand assets pass current Home Assistant requirements; if the HACS
       default-catalog validator still requires `home-assistant/brands`, its PR is merged.
-- [ ] Protocol documents and brand assets have confirmed public redistribution rights.
+- [ ] No restricted protocol documents are distributed, and all included brand
+      assets have confirmed public redistribution rights.
 - [ ] No cache, database, log, packet capture, credential, or generated browser artifact is tracked.
 
 ## Compatibility

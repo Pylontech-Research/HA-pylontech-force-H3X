@@ -24,6 +24,7 @@ FORBIDDEN_TRACKED_PATTERNS = (
     re.compile(r"^output/"),
     re.compile(r"(^|/)\.env($|\.)"),
     re.compile(r"\.(db|db-shm|db-wal|log|pem|key)$"),
+    re.compile(r"^docs/.*\.docx$", re.IGNORECASE),
 )
 
 

@@ -100,8 +100,6 @@ The implemented and intentionally restricted register blocks are documented in
 3. TCP port `502` must not be blocked between Home Assistant and the device.
 4. Give the FH3X a DHCP reservation or static address so its IP does not change unexpectedly.
 
-The battery protocol document lists `192.168.0.16` as the factory external-LAN address. Use the address currently assigned to your own device instead.
-
 Do not expose Modbus TCP port `502` to the internet. Modbus TCP does not provide
 transport encryption or authentication and should remain on a trusted local
 network.
@@ -238,8 +236,10 @@ The values follow the FH3X PCS protocol:
 
 ## Protocol sources
 
-- `docs/F3XModbusProtocolV1.36_20260612.docx` — PCS protocol.
-- `docs/ModBus-Protocol-Pylon-high-voltage-V1.67-20260721-debug-F3X.docx` — BMS protocol and FH3X device-ID mapping.
+The implementation is based on the manufacturer PCS V1.36 and BMS V1.67
+protocol specifications. Those documents are not distributed in this public
+repository. Obtain authorized copies through the manufacturer, and do not
+attach restricted protocol documents to issues or pull requests.
 
 ## Development checks
 
