@@ -106,11 +106,16 @@ The battery protocol document lists `192.168.0.16` as the factory external-LAN a
 4. Search for **Pylontech Force H3X**.
 5. Enter the FH3X IP address and port `502`.
 
-Home Assistant validates the PCS serial number before creating the config entry, so the same device cannot accidentally be configured twice.
+Manual setup validates the PCS serial number before creating the config entry.
+Network discovery uses the FH3X SSDP `USN` to identify and deduplicate devices
+without delaying the setup screen with a Modbus identity request.
 
 ## HACS development installation
 
-Until this repository is published and released, add it to HACS as a custom repository with category **Integration**, then download and restart Home Assistant.
+In HACS, open **Custom repositories**, add
+`https://github.com/pylontech-sw/HA-pylontech-force-H3X` with category
+**Integration**, then download **Pylontech Force H3X** and restart Home
+Assistant.
 
 ## Power sign conventions
 

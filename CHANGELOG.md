@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.26 - 2026-08-17
+
+- Decode current PCS faults, PCS warnings, BMS protections and BMS alarms into
+  stable issue IDs, readable names and raw bitmask attributes.
+- Emit Home Assistant events and Logbook entries when an alarm is triggered,
+  changes or recovers, without interpreting communication gaps as recovery.
+- Remove the unused experimental FH3X frontend panel and keep the integration
+  focused on native Home Assistant entities and dashboards.
+
 ## 0.6.25 - 2026-08-13
 
 - Complete long-running discovery with `async_show_progress_done` before
