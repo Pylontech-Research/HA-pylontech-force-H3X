@@ -133,6 +133,17 @@ python3 -m compileall -q custom_components tests
 python3 -m unittest discover -s tests -v
 ```
 
+Repository-wide contribution, testing, protocol-safety and AI-review rules are
+documented in [`AGENTS.md`](AGENTS.md). Pull requests should retain every section
+and checkbox from [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+
+When Ruff is available, also run:
+
+```bash
+ruff check custom_components tests
+ruff format --check custom_components tests
+```
+
 Full Home Assistant config-flow and entity tests require a Home Assistant development environment.
 
 The standalone tests also cover the control-register decoding and signed-value
