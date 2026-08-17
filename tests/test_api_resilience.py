@@ -147,12 +147,17 @@ class TestFH3XTransportResilience(unittest.IsolatedAsyncioTestCase):
         transport = client._client
         transport.failures_remaining = 1
 
-        registers = await client._async_read_registers(30100, 4, 2)
+        with self.assertLogs(API._LOGGER, level="DEBUG") as logs:
+            registers = await client._async_read_registers(30100, 4, 2)
 
         self.assertEqual(registers, [0, 0, 0, 0])
         self.assertEqual(len(transport.calls), 2)
         self.assertEqual(transport.close_calls, 1)
         self.assertEqual(transport.connect_calls, 1)
+        self.assertTrue(
+            any("reconnecting and retrying" in message for message in logs.output)
+        )
+        self.assertFalse(any(record.levelname == "WARNING" for record in logs.records))
 
     async def test_switching_device_id_applies_guard_delay(self) -> None:
         client = API.FH3XModbusClient(

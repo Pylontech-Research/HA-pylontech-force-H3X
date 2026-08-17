@@ -6,6 +6,11 @@
   stable issue IDs, readable names and raw bitmask attributes.
 - Emit Home Assistant events and Logbook entries when an alarm is triggered,
   changes or recovers, without interpreting communication gaps as recovery.
+- Redact PCS extended and BMS pile serial numbers from downloaded diagnostics.
+- Close the Modbus client when the first coordinator refresh is cancelled or
+  fails, preventing leaked connections during setup retries.
+- Log successful internal Modbus reconnect-and-retry attempts at debug level;
+  completed poll failures remain warnings and still drive availability state.
 - Remove the unused experimental FH3X frontend panel and keep the integration
   focused on native Home Assistant entities and dashboards.
 

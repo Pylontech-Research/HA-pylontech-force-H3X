@@ -196,7 +196,7 @@ class FH3XModbusClient:
             except (TimeoutError, OSError, ModbusException) as err:
                 self._close_transport()
                 if attempt < self.read_retries:
-                    _LOGGER.warning(
+                    _LOGGER.debug(
                         "Transient Modbus read failure for device %s, address %s; "
                         "reconnecting and retrying",
                         device_id,
@@ -341,9 +341,10 @@ class FH3XModbusClient:
                     self._device_values.pop(key, None)
             return {}
 
-        if (
-            self._device_values.get("battery_capacity_source") == "bms_nominal"
-            and isinstance(self._device_values.get("battery_capacity"), int | float)
+        if self._device_values.get(
+            "battery_capacity_source"
+        ) == "bms_nominal" and isinstance(
+            self._device_values.get("battery_capacity"), int | float
         ):
             return {}
 

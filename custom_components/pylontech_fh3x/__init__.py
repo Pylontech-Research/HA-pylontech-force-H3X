@@ -71,7 +71,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: FH3XConfigEntry) -> bool
         detailed_bms=entry.options.get(CONF_DETAILED_BMS, DEFAULT_DETAILED_BMS),
     )
     coordinator = FH3XCoordinator(hass, entry, client)
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except asyncio.CancelledError:
+        await client.async_close()
+        raise
+    except Exception:
+        await client.async_close()
+        raise
 
     entry.runtime_data = FH3XRuntimeData(client=client, coordinator=coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

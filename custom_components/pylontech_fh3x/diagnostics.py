@@ -41,7 +41,7 @@ async def async_get_config_entry_diagnostics(
             "pcs_device_id": PCS_DEVICE_ID,
             "bms_device_id": BMS_DEVICE_ID,
         },
-        "values": dict(snapshot.values),
+        "values": async_redact_data(dict(snapshot.values), TO_REDACT),
         "coordinator_last_update_success": (
             entry.runtime_data.coordinator.last_update_success
         ),
