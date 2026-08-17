@@ -130,9 +130,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             candidate = next(iter(self._discoveries.values()))
             if self._existing_entry_for_discovery(candidate) is not None:
                 return await self.async_step_already_configured()
-            return await self._async_accept_discovery(
-                candidate
-            )
+            return await self._async_accept_discovery(candidate)
         return await self.async_step_select_device()
 
     def _existing_entry_for_discovery(
@@ -177,10 +175,7 @@ class FH3XConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Required("device"): vol.In(
-                        {
-                            key: discovery.display_name
-                            for key, discovery in ordered
-                        }
+                        {key: discovery.display_name for key, discovery in ordered}
                     )
                 }
             ),

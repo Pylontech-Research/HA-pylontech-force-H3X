@@ -1,5 +1,9 @@
 # Pylontech Force H3X for Home Assistant
 
+[![Validate](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/validate.yml/badge.svg)](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/validate.yml)
+[![Tests](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/tests.yml/badge.svg)](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 Local Home Assistant integration for a Pylontech Force H3X residential energy system.
 
 The integration communicates directly with the device over Modbus TCP. It uses one connection and distinguishes the two protocol endpoints by Modbus device ID:
@@ -98,6 +102,38 @@ The implemented and intentionally restricted register blocks are documented in
 
 The battery protocol document lists `192.168.0.16` as the factory external-LAN address. Use the address currently assigned to your own device instead.
 
+Do not expose Modbus TCP port `502` to the internet. Modbus TCP does not provide
+transport encryption or authentication and should remain on a trusted local
+network.
+
+## Compatibility
+
+The current release candidate has been loaded on Home Assistant OS/Green with
+Home Assistant `2026.7.4`. The minimum Home Assistant version will be added to
+`hacs.json` only after the compatibility matrix has been completed; an untested
+minimum version is not declared.
+
+Firmware capabilities vary. Unsupported extended PCS or BMS register blocks
+remain unavailable instead of publishing false zero values. Single-PCS and
+parallel-PCS systems use different documented capacity and lifetime-energy
+sources.
+
+## HACS installation
+
+Until the repository is accepted into the HACS default catalog:
+
+1. Open HACS.
+2. Open **Custom repositories**.
+3. Add `https://github.com/pylontech-sw/HA-pylontech-force-H3X` as an
+   **Integration** repository.
+4. Download **Pylontech Force H3X**.
+5. Restart Home Assistant.
+6. Open **Settings → Devices & services → Add integration** and select
+   **Pylontech Force H3X**.
+
+HACS installs only `custom_components/pylontech_fh3x`. Node.js, a custom
+dashboard, and a cloud account are not required.
+
 ## Manual installation
 
 1. Copy `custom_components/pylontech_fh3x` into Home Assistant's `/config/custom_components/` directory.
@@ -110,12 +146,86 @@ Manual setup validates the PCS serial number before creating the config entry.
 Network discovery uses the FH3X SSDP `USN` to identify and deduplicate devices
 without delaying the setup screen with a Modbus identity request.
 
-## HACS development installation
+## Energy Dashboard
 
-In HACS, open **Custom repositories**, add
-`https://github.com/pylontech-sw/HA-pylontech-force-H3X` with category
-**Integration**, then download **Pylontech Force H3X** and restart Home
-Assistant.
+Use lifetime `total_increasing` energy entities in **Settings → Dashboards →
+Energy**:
+
+- Solar production: **Solar energy**
+- Grid consumption: **Grid import energy**
+- Return to grid: **Grid export energy**
+- Battery energy in: **Battery charge energy**
+- Battery energy out: **Battery discharge energy**
+
+Do not select instantaneous power entities measured in watts for an energy
+source measured in kWh. **Home load energy** is a lifetime FH3X load counter
+when supported by the installed firmware; the Energy Dashboard normally derives
+home consumption from the configured solar, grid, and battery flows.
+
+After changing an energy source, allow Home Assistant statistics to collect new
+samples. Removing and re-adding an FH3X config entry does not automatically
+delete old long-term statistics.
+
+## Alarms and history
+
+The device page exposes current **Inverter fault**, **Inverter warning**, **BMS
+protection**, and **BMS alarm** entities. Their attributes contain readable
+issues, stable issue IDs, raw status masks, and unknown bit positions.
+
+Trigger, update, and recovery transitions are written to Home Assistant's
+Logbook. Open **Logbook** from the Home Assistant sidebar and filter by the FH3X
+alarm entity. History retention follows the user's Recorder configuration. A
+communication timeout is treated as unknown data, not as alarm recovery.
+
+## Upgrading and rollback
+
+Before upgrading, download a Home Assistant backup and read the release notes.
+Upgrade from the FH3X repository page in HACS, restart Home Assistant, and check
+the integration and device logs.
+
+To roll back, open the HACS repository menu, choose **Redownload**, select the
+previous release, and restart Home Assistant. Config entries and entity unique
+IDs are preserved across supported releases. Do not restore a Home Assistant
+database solely to change the integration version.
+
+## Troubleshooting
+
+### Device is unavailable
+
+- Verify that Home Assistant can reach the FH3X address and TCP port `502`.
+- Confirm PCS device ID `2` and BMS device ID `1` are not changed by a gateway.
+- Check that another Modbus client is not monopolizing a single-client gateway.
+- Reload the integration after restoring the network; repeated failures become
+  unavailable only after the configured resilience threshold.
+
+### Discovery finds no device
+
+FH3X discovery uses multicast `239.101.1.250:1900` from source port `1901` and
+the compatibility broadcast path on port `10088`. Wi-Fi isolation, VLAN rules,
+or multicast filtering can block it. Use manual IP setup instead of scanning
+the entire network for open Modbus ports.
+
+### A control returns to its previous value
+
+The displayed final state comes from Modbus read-back. Check the Home Assistant
+error message and device operating mode. In particular, **Charge/discharge
+power reference** is writable only while EMS mode is **User**. Do not repeatedly
+operate a live grid or battery control to reproduce an error.
+
+### Energy statistics jump
+
+Confirm that kWh energy entities, not W power entities, are configured. Download
+diagnostics and inspect the raw lifetime counters before changing statistics.
+The integration guards startup baselines and suspicious resets, but existing
+incorrect Home Assistant statistics may require correction in Developer Tools.
+
+## Privacy and support
+
+Use the structured GitHub issue templates and attach the integration's
+diagnostics download where useful. Check the file before uploading it. Do not
+publish passwords, tokens, device serial numbers, public IP addresses, Home
+Assistant backups, or private packet captures. Security problems must follow
+[`SECURITY.md`](SECURITY.md).
 
 ## Power sign conventions
 
@@ -134,8 +244,9 @@ The values follow the FH3X PCS protocol:
 ## Development checks
 
 ```bash
-python3 -m compileall -q custom_components tests
+python3 -m compileall -q custom_components tests scripts
 python3 -m unittest discover -s tests -v
+python3 scripts/validate_repository.py
 ```
 
 Repository-wide contribution, testing, protocol-safety and AI-review rules are
@@ -145,8 +256,8 @@ and checkbox from [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMP
 When Ruff is available, also run:
 
 ```bash
-ruff check custom_components tests
-ruff format --check custom_components tests
+ruff check custom_components tests scripts
+ruff format --check custom_components tests scripts
 ```
 
 Full Home Assistant config-flow and entity tests require a Home Assistant development environment.
@@ -154,6 +265,11 @@ Full Home Assistant config-flow and entity tests require a Home Assistant develo
 The standalone tests also cover the control-register decoding and signed-value
 handling. Real-device validation remains required before considering the write
 path production-proven.
+
+The release procedure and hardware evidence are tracked in
+[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution requirements.
 
 ## License
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/pylontech-sw/HA-pylontech-force-H3X/security/advisories/new
+    about: Report vulnerabilities privately instead of opening a public issue.
+  - name: Installation and troubleshooting
+    url: https://github.com/pylontech-sw/HA-pylontech-force-H3X#requirements
+    about: Review network, Modbus TCP, and installation requirements first.

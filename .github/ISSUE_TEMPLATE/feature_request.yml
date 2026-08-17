@@ -1,0 +1,56 @@
+name: Feature request
+description: Propose a user-facing enhancement backed by an FH3X capability
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests for writable controls must identify the protocol register, range,
+        unit, sign convention, required operating mode, and real-device validation plan.
+
+  - type: textarea
+    id: use_case
+    attributes:
+      label: User problem
+      description: Describe the Home Assistant use case, not only the desired implementation.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: capability
+    attributes:
+      label: Capability source
+      options:
+        - Existing FH3X Modbus register
+        - Existing Home Assistant entity or API
+        - New firmware capability
+        - Unknown
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Include availability, offline, unsupported-firmware, and error behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: protocol
+    attributes:
+      label: Protocol evidence
+      description: For Modbus changes, provide the document version and register details without uploading restricted documents.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope confirmation
+      options:
+        - label: This request is for local FH3X/Home Assistant functionality, not cloud accounts, OTA, or an unrelated dashboard.
+          required: true

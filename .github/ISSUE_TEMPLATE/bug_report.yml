@@ -1,0 +1,100 @@
+name: Bug report
+description: Report a reproducible problem with the Pylontech Force H3X integration
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the integration. Search existing issues first.
+        Never include passwords, access tokens, public IP addresses, or an unredacted device serial number.
+
+  - type: input
+    id: integration_version
+    attributes:
+      label: Integration version
+      description: Shown in HACS or the integration manifest, for example 0.6.26.
+    validations:
+      required: true
+
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+      placeholder: 2026.8.0
+    validations:
+      required: true
+
+  - type: input
+    id: hacs_version
+    attributes:
+      label: HACS version
+      description: Enter "manual install" if HACS was not used.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: setup_method
+    attributes:
+      label: Setup method
+      options:
+        - FH3X network discovery
+        - Manual IP address
+        - Existing installation upgraded through HACS
+        - Existing manual installation
+    validations:
+      required: true
+
+  - type: dropdown
+    id: topology
+    attributes:
+      label: FH3X topology
+      options:
+        - Single PCS
+        - Parallel PCS system
+        - Modbus simulator
+        - Unknown
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: PCS and BMS firmware
+      description: Do not include the device serial number.
+      placeholder: "PCS: …, BMS: …"
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Include the expected result and the actual result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open …
+        2. Change …
+        3. Observe …
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted diagnostics and logs
+      description: Attach the integration diagnostics download and relevant logs after checking that network addresses and serial numbers are redacted.
+      render: text
+
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety confirmation
+      options:
+        - label: I removed passwords, tokens, public IP addresses, and device serial numbers.
+          required: true
+        - label: I did not repeat unsafe write operations on a live energy system solely to reproduce this issue.
+          required: true

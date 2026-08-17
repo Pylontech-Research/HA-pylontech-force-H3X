@@ -254,9 +254,7 @@ async def async_discover_fh3x(
     results: list[FH3XDiscoveryInfo] = []
     transports: list[asyncio.DatagramTransport] = []
     response_event = asyncio.Event()
-    requests: list[
-        tuple[asyncio.DatagramTransport, tuple[str, int], str, int]
-    ] = []
+    requests: list[tuple[asyncio.DatagramTransport, tuple[str, int], str, int]] = []
 
     try:
         for local_address, _local_network in interfaces:
@@ -279,9 +277,7 @@ async def async_discover_fh3x(
                             transport,
                             destination,
                             local_address,
-                            BROADCAST_PORT
-                            if is_broadcast
-                            else MULTICAST_SOURCE_PORT,
+                            BROADCAST_PORT if is_broadcast else MULTICAST_SOURCE_PORT,
                         )
                     )
                     _LOGGER.debug(
