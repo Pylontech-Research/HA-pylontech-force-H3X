@@ -6,5 +6,4 @@ __pycache__/
 .mypy_cache/
 .coverage
 htmlcov/
-frontend/node_modules/
 output/
