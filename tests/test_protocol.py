@@ -342,6 +342,20 @@ class TestFH3XProtocol(unittest.TestCase):
         self.assertNotIn("average_grid_voltage", values)
         self.assertNotIn("average_grid_current", values)
 
+    def test_grid_averages_reject_zero_voltage_phases(self) -> None:
+        registers = [0] * PCS_MONITOR_COUNT
+        registers[31] = 2340
+        registers[33] = 0
+        registers[35] = 0
+        registers[32] = 5
+        registers[34] = 0
+        registers[36] = 0
+
+        values = decode_pcs(registers)
+
+        self.assertNotIn("average_grid_voltage", values)
+        self.assertNotIn("average_grid_current", values)
+
     def test_extended_device_and_monitor_values(self) -> None:
         device = [0] * PCS_DEVICE_INFO_EXT_COUNT
         device[0] = 15000

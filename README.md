@@ -14,6 +14,13 @@ The integration communicates directly with the device over Modbus TCP. It uses o
 
 No cloud account is required.
 
+## Project documentation
+
+- [FH3X project handover](docs/FH3X项目交接文档.md)
+- [FH3X Home Assistant user guide](docs/FH3X_HA使用文档.md)
+- [FH3X HACS default-store release process](docs/HACS默认商店发布流程.md)
+- [FH3X product point mapping matrix](docs/FH3X产品点位映射矩阵.md)
+
 ## Current scope
 
 - UI-based setup and reconfiguration.
@@ -28,6 +35,8 @@ No cloud account is required.
 - Energy sensors compatible with Home Assistant long-term statistics.
 - Privacy-safe diagnostics download.
 - English and Simplified Chinese translations.
+- Product registration point mappings with persisted daily and monthly energy
+  views; ambiguous protocol points remain unavailable until confirmed.
 - Automatic recovery through Home Assistant's `DataUpdateCoordinator` when the device is temporarily unavailable.
 - Optional PCS controls for EMS mode, SOC limits, manual charge/discharge power,
   meter export limit, heat-pump output and four existing schedule periods.

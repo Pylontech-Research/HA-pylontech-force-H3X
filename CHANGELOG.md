@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Add product registration point mappings for PCS, BMS, PV, AC and meter data
+  while preserving existing entity IDs and sign conventions.
+- Add derived maximum charge/discharge power, device fault status, alarm code,
+  and daily/monthly energy sensors backed by Home Assistant Storage.
+- Keep ambiguous protocol points unavailable until their unit, offset and
+  model capability are confirmed.
+
 ## 0.6.26 - 2026-08-17
 
 - Decode current PCS faults, PCS warnings, BMS protections and BMS alarms into

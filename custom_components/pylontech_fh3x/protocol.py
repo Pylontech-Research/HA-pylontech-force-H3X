@@ -392,9 +392,13 @@ def decode_pcs(registers: list[int]) -> dict[str, FH3XValue]:
         "grid_power_t": _s32(registers, 90),
         "bus_p_to_m_voltage": round(_u16(registers, 97) * 0.1, 1),
     }
-    if all(value != 0xFFFF for value in grid_voltage_raw):
+    # A zero phase voltage means that the phase is not present/valid.  Do not
+    # publish a misleading three-phase average such as (234 + 0 + 0) / 3.
+    if all(value not in (0, 0xFFFF) for value in grid_voltage_raw):
         values["average_grid_voltage"] = round(sum(grid_voltages) / 3, 1)
-    if all(value != 0xFFFF for value in grid_current_raw):
+    if all(value not in (0, 0xFFFF) for value in grid_voltage_raw) and all(
+        value != 0xFFFF for value in grid_current_raw
+    ):
         values["average_grid_current"] = round(sum(grid_currents) / 3, 1)
     return values
 

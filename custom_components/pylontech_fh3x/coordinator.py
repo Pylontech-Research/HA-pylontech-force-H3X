@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import replace
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
@@ -18,6 +19,8 @@ from .const import (
     DOMAIN,
     MAX_CONSECUTIVE_POLL_FAILURES,
 )
+from .period_stats import PeriodEnergyTracker
+from .product import normalize_product_values
 from .protocol import FH3XSnapshot
 from .resilience import PollFailureState
 
@@ -36,6 +39,7 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
         """Initialize the coordinator."""
         self.client = client
         self._alarm_events: AlarmEventTracker | None = None
+        self._period_stats = PeriodEnergyTracker(hass, entry.entry_id)
         self.poll_failure_state = PollFailureState(
             failure_threshold=MAX_CONSECUTIVE_POLL_FAILURES
         )
@@ -79,6 +83,12 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
                 "FH3X communication recovered after %s failed poll(s)",
                 previous_failures,
             )
+        # The shared protocol client provides stable legacy keys and raw
+        # snapshots.  Normalize the product registration names at the
+        # integration boundary so existing entity IDs remain untouched.
+        values = normalize_product_values(snapshot.values, snapshot.identity)
+        await self._period_stats.async_update(values)
+        snapshot = replace(snapshot, values=values)
         if self._alarm_events is not None:
             self._alarm_events.process(snapshot)
         return snapshot

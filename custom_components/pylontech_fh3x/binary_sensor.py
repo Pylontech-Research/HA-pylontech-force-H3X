@@ -183,7 +183,33 @@ def _grid_connection_attributes(
     return {"operating_mode": data.get("grid_operating_mode", "unknown")}
 
 
+def _device_status_attributes(
+    data: Mapping[str, FH3XValue],
+) -> Mapping[str, Any]:
+    """Expose the aggregate status and merged current code on device flags."""
+    return {
+        "device_fault_status": data.get("device_fault_status", "unknown"),
+        "current_alarm_code": data.get("current_alarm_code", "0"),
+    }
+
+
 BINARY_SENSOR_DESCRIPTIONS = (
+    FH3XBinarySensorEntityDescription(
+        key="device_fault",
+        translation_key="device_fault",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        is_on_fn=lambda data: data.get("device_fault_status") == "fault",
+        available_fn=lambda data: "device_fault_status" in data,
+        attributes_fn=_device_status_attributes,
+    ),
+    FH3XBinarySensorEntityDescription(
+        key="device_alarm",
+        translation_key="device_alarm",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        is_on_fn=lambda data: data.get("device_fault_status") == "alarm",
+        available_fn=lambda data: "device_fault_status" in data,
+        attributes_fn=_device_status_attributes,
+    ),
     FH3XBinarySensorEntityDescription(
         key="grid_connected",
         translation_key="grid_connected",
