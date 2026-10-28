@@ -1,245 +1,158 @@
 # Pylontech Force H3X for Home Assistant
 
-[![Validate](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/validate.yml/badge.svg)](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/validate.yml)
-[![Tests](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/tests.yml/badge.svg)](https://github.com/pylontech-sw/HA-pylontech-force-H3X/actions/workflows/tests.yml)
+[![Validate](https://github.com/Pylontech-Research/HA-pylontech-force-H3X/actions/workflows/validate.yml/badge.svg)](https://github.com/Pylontech-Research/HA-pylontech-force-H3X/actions/workflows/validate.yml)
+[![Tests](https://github.com/Pylontech-Research/HA-pylontech-force-H3X/actions/workflows/tests.yml/badge.svg)](https://github.com/Pylontech-Research/HA-pylontech-force-H3X/actions/workflows/tests.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Local Home Assistant integration for a Pylontech Force H3X residential energy system.
+A custom Home Assistant integration for local access to Pylontech Force H3X systems over Modbus TCP. No Pylontech cloud account is required.
 
-The integration communicates directly with the device over Modbus TCP. It uses one connection and distinguishes the two protocol endpoints by Modbus device ID:
+## What this integration provides
 
-- BMS: device ID `1`
-- PCS: device ID `2`
-- Default TCP port: `502`
+- Set up and manage the integration from the Home Assistant Interface.
+- Monitor solar, home-load, grid and battery power, battery SOC, SOH, operating status and current system alert.
+- Use supported cumulative energy sensors with the Home Assistant Energy Dashboard and long-term statistics.
+- Enable additional PV input, phase, temperature, battery-module and cell readings when supported by the installed system and firmware.
+- Download diagnostics with the device IP address and serial number redacted.
+- Resume data updates automatically after temporary communication interruptions.
 
-No cloud account is required.
+Some readings depend on the installed model, firmware and system configuration.
 
-## Current scope
+## Advanced options
 
-- UI-based setup and reconfiguration.
-- One coordinated poll shared by every entity.
-- PCS identity, operating state, PV1/PV2/PV3, grid, load and battery values.
-- Everyday grid context: connection state, three-phase average voltage/current
-  and frequency, plus battery capacity from PCS parallel totals or BMS nominal
-  voltage/Ah for a non-parallel PCS.
-- BMS SOC, SOH, cycles, temperatures, cell voltage limits and alarms.
-- BMS lifetime home-load energy when the installed firmware supports the
-  dedicated single/parallel-system counter.
-- Energy sensors compatible with Home Assistant long-term statistics.
-- Privacy-safe diagnostics download.
-- English and Simplified Chinese translations.
-- Automatic recovery through Home Assistant's `DataUpdateCoordinator` when the device is temporarily unavailable.
-- Optional PCS controls for EMS mode, SOC limits, manual charge/discharge power,
-  meter export limit, heat-pump output and four existing schedule periods.
-- PCS three-phase, EPS/backup, meter, parallel-system and directional energy
-  diagnostics when supported by the device firmware.
-- Optional BMS single-pile, per-module and per-cell voltage/temperature data.
+### Device Controls
 
-The recommended control profile exposes six daily controls and four common
-numeric settings. Complete schedules and engineering controls remain opt-in.
-Every command is serialized with polling, written to the PCS at device ID `2`,
-read back for verification, and followed by a complete coordinator refresh.
+The FH3X operating mode is read-only and can not be changed in Home Assistant.
 
-The Integration options provide two independent visibility profiles:
+Writable controls have not yet been validated on real hardware and are not supported for normal use. They should remain disabled until validation has been completed for the installed model, firmware and system configuration.
 
-- Entity detail: **Recommended**, **Extended monitoring** or **Engineering
-  diagnostics**. Recommended is the default and exposes only system-level
-  power, cumulative energy, SOC/SOH, operating state and four aggregate alarm
-  entities. PV strings, phases, temperatures, cells and raw protocol values are
-  opt-in.
-- Control exposure: **Daily controls only**, **Daily controls and common
-  settings**, or **Advanced controls and full schedules**. The common-settings
-  tier is the default. All tiers show EMS, EPS and the four period enable
-  switches. The default adds manual power and three SOC limits. Advanced adds
-  complete period details, peak shaving, heat-pump and export settings.
+The optional heat-pump entity provides a start/stop command only. It does not report or confirm the heat-pump's actual operating state.
 
-Controls use native Home Assistant UI types. Operating modes and enable switches
-appear in the device Controls section; numeric thresholds, time pickers and
-weekday settings appear under Configuration. Each period enable switch includes
-its current mode, power, time range and weekdays as state attributes.
+### Detailed battery diagnostics
 
-## Controls and safety
+Optional module- and cell-level battery readings can be enabled from the integration options. Depending on the installed system and firmware, these may include:
 
-The optional controls implement PCS protocol V1.36 registers also exposed by the
-community `HA-pylontech-force-H3X` project, but use this integration's current
-protocol decoder and connection layer:
+- Module voltage and temperature
+- Cell voltage and temperature
 
-- EMS mode: self-consumption, backup, off-grid, feed-in priority, user and PN
-  customer modes.
-- Charge/discharge power reference: `-100.0%` to `100.0%`. The integration only
-  permits changing it while EMS mode is **User**.
-- Charge limit SOC: `50%` to `100%`.
-- On-grid EPS reserve SOC: `5%` to `100%`.
-- Meter export power limit: `-20000 W` to `-1 W`.
-- Heat-pump output.
-- Schedule periods 1–4: enable, start/end time, charge/discharge mode, power and
-  individual weekdays.
+These diagnostic readings are read-only and do not change any device settings. Enable them only when detailed battery information is needed. Unsupported readings remain unavailable.
 
-Weekday changes use a locked read-modify-write operation against the latest PCS
-register value, so rapid changes do not overwrite other selected days.
+## Before you start
 
-Do not change a control unless its effect is understood and the range matches
-the rated power and operating rules of your installation. Active schedule
-periods must not overlap. The first hardware validation should be performed
-while the system is supervised.
+- Connect the Force H3X to a local network that is accessible from Home Assistant.
+- Modbus TCP is disabled by default. It must be enabled on the Force H3X by the installer or a user with the required access before adding the integration.
+- Home Assistant must be able to reach the Force H3X IP address and its configured Modbus TCP port. The default port is 502.
+- A DHCP reservation or static IP address is recommended so the Force H3X address does not change unexpectedly.
 
-## Detailed battery diagnostics
+The integration has been tested with Home Assistant Green 2026.7.4.
 
-Open the Integration options and enable **Detailed module and cell data** to read
-the BMS `0x1400` single-pile region. This creates disabled diagnostic entities for
-every module and cell reported by the BMS. Leave it disabled until normal PCS and
-BMS polling has been validated on the real system.
+Some optional readings may be unavailable depending on the installed model, firmware and system configuration. This can include detailed PV, phase, battery-module and cell information.
 
-The implemented and intentionally restricted register blocks are documented in
-[`docs/LOCAL_POINT_MATRIX.md`](docs/LOCAL_POINT_MATRIX.md).
+Keep the Modbus TCP connection on a trusted private network. Do not forward its port through your router or expose it directly to the internet because the connection used by this integration is not encrypted and has no login protection.
 
-## Requirements
+## Installation
 
-1. Home Assistant must be able to reach the FH3X IP address directly.
-2. Modbus TCP must be enabled on the FH3X.
-3. TCP port `502` must not be blocked between Home Assistant and the device.
-4. Give the FH3X a DHCP reservation or static address so its IP does not change unexpectedly.
+### HACS Installation (recommended)
 
-Do not expose Modbus TCP port `502` to the internet. Modbus TCP does not provide
-transport encryption or authentication and should remain on a trusted local
-network.
+1. Open HACS and search for Pylontech Force H3X.
+2. If the integration is not listed, open the three-dot menu, select Custom repositories, and add `https://github.com/Pylontech-Research/HA-pylontech-force-H3X` as an Integration repository.
+3. Open Pylontech Force H3X, select Download, and restart Home Assistant when prompted.
+4. Go to Settings → Devices & services → Add integration and select Pylontech Force H3X.
 
-## Compatibility
+If the system is not discovered automatically, enter its local IP address and configured Modbus TCP port. The default port is 502.
 
-The current release candidate has been loaded on Home Assistant OS/Green with
-Home Assistant `2026.7.4`. The minimum Home Assistant version will be added to
-`hacs.json` only after the compatibility matrix has been completed; an untested
-minimum version is not declared.
+### Manual Installation (optional)
 
-Firmware capabilities vary. Unsupported extended PCS or BMS register blocks
-remain unavailable instead of publishing false zero values. Single-PCS and
-parallel-PCS systems use different documented capacity and lifetime-energy
-sources.
-
-## HACS installation
-
-Until the repository is accepted into the HACS default catalog:
-
-1. Open HACS.
-2. Open **Custom repositories**.
-3. Add `https://github.com/pylontech-sw/HA-pylontech-force-H3X` as an
-   **Integration** repository.
-4. Download **Pylontech Force H3X**.
-5. Restart Home Assistant.
-6. Open **Settings → Devices & services → Add integration** and select
-   **Pylontech Force H3X**.
-
-HACS installs only `custom_components/pylontech_fh3x`. Node.js, a custom
-dashboard, and a cloud account are not required.
-
-## Manual installation
-
-1. Copy `custom_components/pylontech_fh3x` into Home Assistant's `/config/custom_components/` directory.
-2. Restart Home Assistant.
-3. Open **Settings → Devices & services → Add integration**.
-4. Search for **Pylontech Force H3X**.
-5. Enter the FH3X IP address and port `502`.
-
-Manual setup validates the PCS serial number before creating the config entry.
-Network discovery uses the FH3X SSDP `USN` to identify and deduplicate devices
-without delaying the setup screen with a Modbus identity request.
+1. Download this repository as a ZIP archive.
+2. Copy `custom_components/pylontech_fh3x` to `/config/custom_components/pylontech_fh3x`.
+3. Confirm that `/config/custom_components/pylontech_fh3x/manifest.json` exists.
+4. Restart Home Assistant.
+5. Go to Settings → Devices & services → Add integration and select Pylontech Force H3X.
 
 ## Energy Dashboard
 
-Use lifetime `total_increasing` energy entities in **Settings → Dashboards →
-Energy**:
+Go to Settings → Dashboards → Energy and select the following entities:
 
-- Solar production: **Solar energy**
-- Grid consumption: **Grid import energy**
-- Return to grid: **Grid export energy**
-- Battery energy in: **Battery charge energy**
-- Battery energy out: **Battery discharge energy**
+- Solar production: Solar Energy
+- Grid Consumption: Grid import energy
+- Return to grid: Grid export energy
+- Battery energy in: Battery charge energy
+- Battery energy out: Battery discharge energy
+- Battery state of charge (optional): Battery level
 
-Do not select instantaneous power entities measured in watts for an energy
-source measured in kWh. **Home load energy** is a lifetime FH3X load counter
-when supported by the installed firmware; the Energy Dashboard normally derives
-home consumption from the configured solar, grid, and battery flows.
+Use entities measured in kWh for energy fields. If Home Assistant provides a separate live-power field, use the corresponding W or kW entity only in that field.
 
-After changing an energy source, allow Home Assistant statistics to collect new
-samples. Removing and re-adding an FH3X config entry does not automatically
-delete old long-term statistics.
+Home Assistant calculates home consumption from the configured solar, grid and battery energy flows. Home load energy is therefore not required as an additional Energy Dashboard source.
 
-## Alarms and history
+After completing the configuration, allow time for Home Assistant to collect the first statistics samples.
 
-The device page exposes current **Inverter fault**, **Inverter warning**, **BMS
-protection**, and **BMS alarm** entities. Their attributes contain readable
-issues, stable issue IDs, raw status masks, and unknown bit positions.
+For live power values:
 
-Trigger, update, and recovery transitions are written to Home Assistant's
-Logbook. Open **Logbook** from the Home Assistant sidebar and filter by the FH3X
-alarm entity. History retention follows the user's Recorder configuration. A
-communication timeout is treated as unknown data, not as alarm recovery.
+- Positive Grid power means importing from the grid.
+- Negative Grid power means exporting to the grid.
+- Positive Battery power means the battery is discharging.
+- Negative Battery power means the battery is charging.
+- Home load power is calculated from solar, grid and battery power. It may differ slightly from a dedicated load meter.
 
-## Upgrading and rollback
+## Alarms
 
-Before upgrading, download a Home Assistant backup and read the release notes.
-Upgrade from the FH3X repository page in HACS, restart Home Assistant, and check
-the integration and device logs.
+The device page provides the following alarm entities:
 
-To roll back, open the HACS repository menu, choose **Redownload**, select the
-previous release, and restart Home Assistant. Config entries and entity unique
-IDs are preserved across supported releases. Do not restore a Home Assistant
-database solely to change the integration version.
+- Inverter fault
+- Inverter warning
+- BMS protection
+- BMS alarm
+
+Open an alarm entity to view the currently reported issues.
+
+BMS protection indicates an active battery protection condition. It is not a setting and does not mean that a protection function has been manually enabled.
+
+A communication interruption does not clear an active alarm. After repeated communication failures, the alarm entities become unavailable until communication is restored.
 
 ## Troubleshooting
 
 ### Device is unavailable
 
-- Verify that Home Assistant can reach the FH3X address and TCP port `502`.
-- Confirm PCS device ID `2` and BMS device ID `1` are not changed by a gateway.
-- Check that another Modbus client is not monopolizing a single-client gateway.
-- Reload the integration after restoring the network; repeated failures become
-  unavailable only after the configured resilience threshold.
+- Confirm that the FH3X is powered and connected to the local network.
+- Confirm that Modbus TCP has been enabled on the FH3X.
+- Check that the configured IP address is correct.
+- Check the configured Modbus TCP port. The default port is 502.
+- If the FH3X IP address has changed, select Reconfigure from the integration menu and enter the new address.
+
+The integration normally reconnects automatically after a temporary network interruption. Reload the integration only if communication does not recover.
 
 ### Discovery finds no device
 
-FH3X discovery uses multicast `239.101.1.250:1900` from source port `1901` and
-the compatibility broadcast path on port `10088`. Wi-Fi isolation, VLAN rules,
-or multicast filtering can block it. Use manual IP setup instead of scanning
-the entire network for open Modbus ports.
+Confirm that Home Assistant and the FH3X can communicate over the same local network.
 
-### A control returns to its previous value
+Guest-network isolation, VLAN rules, Wi-Fi client isolation, or multicast filtering may prevent automatic discovery.
 
-The displayed final state comes from Modbus read-back. Check the Home Assistant
-error message and device operating mode. In particular, **Charge/discharge
-power reference** is writable only while EMS mode is **User**. Do not repeatedly
-operate a live grid or battery control to reproduce an error.
+If the device is not discovered, add the integration manually using the FH3X local IP address and configured Modbus TCP port.
 
-### Energy statistics jump
+### Energy data is missing
 
-Confirm that kWh energy entities, not W power entities, are configured. Download
-diagnostics and inspect the raw lifetime counters before changing statistics.
-The integration guards startup baselines and suspicious resets, but existing
-incorrect Home Assistant statistics may require correction in Developer Tools.
+- Confirm that the Energy Dashboard uses the kWh entities listed above.
+- Confirm that the selected entities are available and reporting numeric values.
+- Allow time for Home Assistant to collect the first statistics samples.
+
+Do not replace cumulative energy entities with similarly named instantaneous power entities.
+
+### Energy data changes unexpectedly
+
+First check the current values reported by the integration. Do not edit Home Assistant statistics until the source reading has been confirmed as incorrect.
+
+If the problem continues, download the integration diagnostics and report the issue.
+
+## Compatibility
+
+The integration has been loaded on Home Assistant OS/Green with Home Assistant `2026.7.4`. The minimum Home Assistant version will be added to `hacs.json` only after the compatibility matrix has been completed; an untested minimum version is not declared.
 
 ## Privacy and support
 
-Use the structured GitHub issue templates and attach the integration's
-diagnostics download where useful. Check the file before uploading it. Do not
-publish passwords, tokens, device serial numbers, public IP addresses, Home
-Assistant backups, or private packet captures. Security problems must follow
-[`SECURITY.md`](SECURITY.md).
-
-## Power sign conventions
-
-The values follow the FH3X PCS protocol:
-
-- Grid power: positive = importing, negative = exporting.
-- Battery power/current: positive = discharging, negative = charging.
-- AC total power: positive = output, negative = input.
-- Home load is derived as `PV + grid + battery`.
+Use the structured GitHub issue templates and attach the integration's diagnostics download where useful. Check the file before uploading it. Do not publish passwords, tokens, device serial numbers, public IP addresses, Home Assistant backups, or private packet captures. Security problems must follow [`SECURITY.md`](SECURITY.md).
 
 ## Protocol sources
 
-The implementation is based on the manufacturer PCS V1.36 and BMS V1.67
-protocol specifications. Those documents are not distributed in this public
-repository. Obtain authorized copies through the manufacturer, and do not
-attach restricted protocol documents to issues or pull requests.
+The implementation is based on the manufacturer PCS V1.36 and BMS V1.67 protocol specifications. Those documents are not distributed in this public repository. Obtain authorized copies through the manufacturer, and do not attach restricted protocol documents to issues or pull requests.
 
 ## Development checks
 
@@ -249,9 +162,7 @@ python3 -m unittest discover -s tests -v
 python3 scripts/validate_repository.py
 ```
 
-Repository-wide contribution, testing, protocol-safety and AI-review rules are
-documented in [`AGENTS.md`](AGENTS.md). Pull requests should retain every section
-and checkbox from [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
+Repository-wide contribution, testing, protocol-safety and AI-review rules are documented in [`AGENTS.md`](AGENTS.md). Pull requests should retain every section and checkbox from [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md).
 
 When Ruff is available, also run:
 
@@ -262,15 +173,12 @@ ruff format --check custom_components tests scripts
 
 Full Home Assistant config-flow and entity tests require a Home Assistant development environment.
 
-The standalone tests also cover the control-register decoding and signed-value
-handling. Real-device validation remains required before considering the write
-path production-proven.
+The standalone tests also cover the control-register decoding and signed-value handling. Real-device validation remains required before considering the write path production-proven.
 
-The release procedure and hardware evidence are tracked in
-[`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
+The release procedure and hardware evidence are tracked in [`docs/RELEASE_CHECKLIST.md`](docs/RELEASE_CHECKLIST.md).
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution requirements.
 
 ## License
 
-MIT
+Released under the MIT License.
