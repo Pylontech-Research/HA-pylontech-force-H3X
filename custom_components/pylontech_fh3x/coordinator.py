@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .alarm_history import AlarmEventTracker
-from .api import FH3XError, FH3XModbusClient
+from .api import FH3XError, FH3XModbusClient, PCS_DEVICE_ID
 from .const import (
     CONF_SCAN_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
@@ -21,7 +21,13 @@ from .const import (
 )
 from .period_stats import PeriodEnergyTracker
 from .product import normalize_product_values
-from .protocol import FH3XSnapshot
+from .protocol import (
+    FH3XSnapshot,
+    FH3XValue,
+    PCS_SITE_POWER_LIMIT_ADDRESS,
+    PCS_SITE_POWER_LIMIT_COUNT,
+    decode_site_power_limits,
+)
 from .resilience import PollFailureState
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,15 +89,41 @@ class FH3XCoordinator(DataUpdateCoordinator[FH3XSnapshot]):
                 "FH3X communication recovered after %s failed poll(s)",
                 previous_failures,
             )
+        # The shared protocol library does not read the PCS grid-import limit
+        # yet.  Read the two registers here so the point stays visible, and let
+        # a device that does not implement it leave the entity unavailable.
+        values = dict(snapshot.values)
+        await self._async_merge_site_power_limit(values)
         # The shared protocol client provides stable legacy keys and raw
         # snapshots.  Normalize the product registration names at the
         # integration boundary so existing entity IDs remain untouched.
-        values = normalize_product_values(snapshot.values, snapshot.identity)
+        values = normalize_product_values(values, snapshot.identity)
         await self._period_stats.async_update(values)
         snapshot = replace(snapshot, values=values)
         if self._alarm_events is not None:
             self._alarm_events.process(snapshot)
         return snapshot
+
+    async def _async_merge_site_power_limit(self, values: dict[str, FH3XValue]) -> None:
+        """Merge the PCS grid-import limit into the polled snapshot values.
+
+        The shared protocol library owns the polled blocks, so this point is
+        read through the client's register helper until the library exposes it.
+        A missing helper or an unanswered register only hides this one entity.
+        """
+        read_registers = getattr(self.client, "_async_read_registers", None)
+        if read_registers is None:
+            return
+        try:
+            registers = await read_registers(
+                PCS_SITE_POWER_LIMIT_ADDRESS,
+                PCS_SITE_POWER_LIMIT_COUNT,
+                PCS_DEVICE_ID,
+            )
+        except FH3XError as err:
+            _LOGGER.debug("FH3X grid import power limit is unavailable: %s", err)
+            return
+        values.update(decode_site_power_limits(registers))
 
     async def async_write_u16(self, address: int, value: int) -> None:
         """Write a U16 control value and refresh all entities."""

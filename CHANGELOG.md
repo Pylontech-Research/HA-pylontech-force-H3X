@@ -1,7 +1,14 @@
 # Changelog
 
-## Unreleased
+## 0.6.27 - 2026-10-29
 
+- Add a read-only grid import power limit entity backed by PCS register 40937,
+  matching the 2026-10-29 product registration table.
+- Mark the PCS 40401 export power limit as read-only and align its English and
+  Chinese names with the product table; the register, unit and unique ID are
+  unchanged.
+- Read the 40937 block as an optional point so a firmware that does not answer
+  it only leaves this one entity unavailable.
 - Add product registration point mappings for PCS, BMS, PV, AC and meter data
   while preserving existing entity IDs and sign conventions.
 - Add derived maximum charge/discharge power, device fault status, alarm code,

@@ -10,5 +10,5 @@
   "issue_tracker": "https://github.com/pylontech-sw/HA-pylontech-force-H3X/issues",
   "loggers": ["pymodbus"],
   "requirements": ["pylontech-fh3x==0.1.0"],
-  "version": "0.6.26"
+  "version": "0.6.27"
 }

@@ -59,6 +59,7 @@ ADVANCED_CONFIG_KEYS = (
     frozenset(
         {
             "meter_export_power_max",
+            "grid_import_power_limit",
             "peak_shaving_safety_soc",
             "peak_shaving_meter_power_limit",
         }

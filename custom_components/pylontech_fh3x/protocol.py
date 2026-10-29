@@ -28,6 +28,8 @@ PCS_ENERGY_MANAGEMENT_ADDRESS = 40901
 PCS_ENERGY_MANAGEMENT_COUNT = 31
 PCS_PEAK_SHAVING_ADDRESS = 40973
 PCS_PEAK_SHAVING_COUNT = 3
+PCS_SITE_POWER_LIMIT_ADDRESS = 40937
+PCS_SITE_POWER_LIMIT_COUNT = 2
 
 BMS_SYSTEM_ADDRESS = 0x1100
 BMS_SYSTEM_COUNT = 0x114F - BMS_SYSTEM_ADDRESS
@@ -545,6 +547,18 @@ def decode_peak_shaving_controls(registers: list[int]) -> dict[str, FH3XValue]:
         "peak_shaving_safety_soc": _u16(registers, 1),
         "peak_shaving_meter_power_limit": _u16(registers, 2),
     }
+
+
+def decode_site_power_limits(registers: list[int]) -> dict[str, FH3XValue]:
+    """Decode PCS registers 40937 through 40938 (device address 2).
+
+    Protocol V1.36 names 40937 "grid import power limit" and documents it as a
+    U32 watt value: "15000 means a 15000 W import limit".  The product table
+    marks the point read-only for this integration, so it is decoded for
+    display only and never written.
+    """
+    _require(registers, PCS_SITE_POWER_LIMIT_COUNT, "PCS site power limit")
+    return {"grid_import_power_limit": _u32(registers, 0)}
 
 
 def decode_bms(registers: list[int]) -> dict[str, FH3XValue]:

@@ -196,7 +196,8 @@
       "charge_limit_soc": {"name": "充电 SOC 上限"},
       "eps_limit_soc_on_grid": {"name": "并网 EPS 预留 SOC"},
       "eps_limit_soc_off_grid": {"name": "离网 EPS 预留 SOC"},
-      "meter_export_power_max": {"name": "电表馈网功率限制"},
+      "meter_export_power_max": {"name": "电网馈网功率限制"},
+      "grid_import_power_limit": {"name": "电网取电功率限制"},
       "peak_shaving_safety_soc": {"name": "削峰安全 SOC"},
       "peak_shaving_meter_power_limit": {"name": "削峰电表功率限制"},
       "schedule_power": {"name": "计划时段 {period} 功率"}

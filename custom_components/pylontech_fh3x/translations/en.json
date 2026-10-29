@@ -190,7 +190,8 @@
       "charge_limit_soc": {"name": "Charge limit SOC"},
       "eps_limit_soc_on_grid": {"name": "On-grid EPS reserve SOC"},
       "eps_limit_soc_off_grid": {"name": "Off-grid EPS reserve SOC"},
-      "meter_export_power_max": {"name": "Meter export power limit"},
+      "meter_export_power_max": {"name": "Grid export power limit"},
+      "grid_import_power_limit": {"name": "Grid import power limit"},
       "peak_shaving_safety_soc": {"name": "Peak-shaving safety SOC"},
       "peak_shaving_meter_power_limit": {"name": "Peak-shaving meter power limit"},
       "schedule_power": {"name": "Schedule period {period} power"}
