@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.28 - 2026-10-30
+
+- Release the productisation work prepared in 0.6.27: the read-only grid import
+  power limit on PCS 40937, the product registration point mappings, the derived
+  fault, alarm and maximum-power sensors, and the daily/monthly energy views.
+- Keep the internal working documents (conversation records, release planning,
+  reference spreadsheets) off the release branch.
+- No integration behaviour change compared with 0.6.27.
+
 ## 0.6.27 - 2026-10-29
 
 - Add a read-only grid import power limit entity backed by PCS register 40937,
