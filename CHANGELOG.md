@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.29 - 2026-10-30
+
+- Expose the grid import power limit (PCS 40937) and the grid export power
+  limit (PCS 40401) in the basic control profile, so both entities are enabled
+  by default instead of only under advanced controls.  Registers, units,
+  ranges and unique IDs are unchanged.
+
 ## 0.6.28 - 2026-10-30
 
 - Release the productisation work prepared in 0.6.27: the read-only grid import

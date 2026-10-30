@@ -30,7 +30,7 @@ class TestControlExposure(unittest.TestCase):
         self.assertEqual(len(enabled), 6)
         self.assertTrue(all(EXPOSURE.is_primary_control(key) for key in enabled))
 
-    def test_basic_profile_adds_four_common_settings(self) -> None:
+    def test_basic_profile_adds_six_common_settings(self) -> None:
         enabled = {
             key
             for key in EXPOSURE.ALL_WRITABLE_KEYS
@@ -41,7 +41,17 @@ class TestControlExposure(unittest.TestCase):
             EXPOSURE.DAILY_CONTROL_KEYS | EXPOSURE.BASIC_CONFIG_KEYS,
         )
         self.assertEqual(len(EXPOSURE.DAILY_CONTROL_KEYS), 6)
-        self.assertEqual(len(EXPOSURE.BASIC_CONFIG_KEYS), 4)
+        self.assertEqual(len(EXPOSURE.BASIC_CONFIG_KEYS), 6)
+
+    def test_power_limits_are_enabled_in_the_basic_profile(self) -> None:
+        for key in ("grid_import_power_limit", "meter_export_power_max"):
+            self.assertTrue(
+                EXPOSURE.control_enabled(key, EXPOSURE.CONTROL_PROFILE_BASIC)
+            )
+            self.assertFalse(
+                EXPOSURE.control_enabled(key, EXPOSURE.CONTROL_PROFILE_DAILY)
+            )
+            self.assertFalse(EXPOSURE.is_primary_control(key))
 
     def test_advanced_profile_has_eight_controls_and_52_configuration(self) -> None:
         enabled = {

@@ -23,6 +23,8 @@ BASIC_CONFIG_KEYS = frozenset(
         "charge_limit_soc",
         "eps_limit_soc_on_grid",
         "eps_limit_soc_off_grid",
+        "grid_import_power_limit",
+        "meter_export_power_max",
     }
 )
 
@@ -58,8 +60,6 @@ SCHEDULE_CONFIG_KEYS = frozenset(
 ADVANCED_CONFIG_KEYS = (
     frozenset(
         {
-            "meter_export_power_max",
-            "grid_import_power_limit",
             "peak_shaving_safety_soc",
             "peak_shaving_meter_power_limit",
         }
