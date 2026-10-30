@@ -28,6 +28,7 @@ PCS_IDENTITY_COUNT = PROTOCOL.PCS_IDENTITY_COUNT
 PCS_MONITOR_COUNT = PROTOCOL.PCS_MONITOR_COUNT
 PCS_MONITOR_EXT_COUNT = PROTOCOL.PCS_MONITOR_EXT_COUNT
 PCS_PEAK_SHAVING_COUNT = PROTOCOL.PCS_PEAK_SHAVING_COUNT
+PCS_SITE_POWER_LIMIT_COUNT = PROTOCOL.PCS_SITE_POWER_LIMIT_COUNT
 FH3XDecodeError = PROTOCOL.FH3XDecodeError
 TotalIncreasingGuard = PROTOCOL.TotalIncreasingGuard
 decode_active_power_controls = PROTOCOL.decode_active_power_controls
@@ -42,6 +43,7 @@ decode_energy_management_controls = PROTOCOL.decode_energy_management_controls
 decode_identity = PROTOCOL.decode_identity
 decode_internal_controls = PROTOCOL.decode_internal_controls
 decode_peak_shaving_controls = PROTOCOL.decode_peak_shaving_controls
+decode_site_power_limits = PROTOCOL.decode_site_power_limits
 decode_pcs = PROTOCOL.decode_pcs
 decode_pcs_monitor_ext = PROTOCOL.decode_pcs_monitor_ext
 update_u16_bit = PROTOCOL.update_u16_bit
@@ -342,6 +344,20 @@ class TestFH3XProtocol(unittest.TestCase):
         self.assertNotIn("average_grid_voltage", values)
         self.assertNotIn("average_grid_current", values)
 
+    def test_grid_averages_reject_zero_voltage_phases(self) -> None:
+        registers = [0] * PCS_MONITOR_COUNT
+        registers[31] = 2340
+        registers[33] = 0
+        registers[35] = 0
+        registers[32] = 5
+        registers[34] = 0
+        registers[36] = 0
+
+        values = decode_pcs(registers)
+
+        self.assertNotIn("average_grid_voltage", values)
+        self.assertNotIn("average_grid_current", values)
+
     def test_extended_device_and_monitor_values(self) -> None:
         device = [0] * PCS_DEVICE_INFO_EXT_COUNT
         device[0] = 15000
@@ -536,6 +552,18 @@ class TestFH3XProtocol(unittest.TestCase):
         self.assertTrue(values["peak_shaving_enabled"])
         self.assertEqual(values["peak_shaving_safety_soc"], 20)
         self.assertEqual(values["peak_shaving_meter_power_limit"], 5000)
+
+    def test_site_power_limit_decodes_u32_watt_value(self) -> None:
+        site = [0, 15000]
+        self.assertEqual(len(site), PCS_SITE_POWER_LIMIT_COUNT)
+
+        values = decode_site_power_limits(site)
+
+        self.assertEqual(values["grid_import_power_limit"], 15000)
+
+    def test_site_power_limit_rejects_short_block(self) -> None:
+        with self.assertRaises(FH3XDecodeError):
+            decode_site_power_limits([0])
 
     def test_short_response_is_rejected(self) -> None:
         with self.assertRaises(FH3XDecodeError):

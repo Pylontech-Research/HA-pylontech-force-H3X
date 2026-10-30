@@ -18,6 +18,43 @@ from .exposure import control_enabled, is_primary_control
 
 STANDARD_SENSOR_KEYS = frozenset(
     {
+        "max_charge_power",
+        "max_discharge_power",
+        "battery_soc_bms",
+        "battery_soh",
+        "battery_temperature",
+        "inverter_generation_energy",
+        "inverter_consumption_energy",
+        "pv_power",
+        "pv_generation_energy",
+        "third_party_pv_power",
+        "ac_frequency",
+        "ac_phase_r_voltage",
+        "ac_phase_s_voltage",
+        "ac_phase_t_voltage",
+        "ac_phase_r_current",
+        "ac_phase_s_current",
+        "ac_phase_t_current",
+        "meter_phase_a_voltage",
+        "meter_phase_b_voltage",
+        "meter_phase_c_voltage",
+        "meter_grid_frequency",
+        "daily_battery_charge_energy",
+        "daily_battery_discharge_energy",
+        "daily_pv_generation_energy",
+        "daily_third_party_pv_generation_energy",
+        "daily_inverter_generation_energy",
+        "daily_inverter_consumption_energy",
+        "daily_grid_import_energy",
+        "daily_grid_export_energy",
+        "monthly_battery_charge_energy",
+        "monthly_battery_discharge_energy",
+        "monthly_pv_generation_energy",
+        "monthly_third_party_pv_generation_energy",
+        "monthly_inverter_generation_energy",
+        "monthly_inverter_consumption_energy",
+        "monthly_grid_import_energy",
+        "monthly_grid_export_energy",
         "pv1_power",
         "pv2_power",
         "pv3_power",
@@ -48,6 +85,7 @@ STANDARD_SENSOR_KEYS = frozenset(
 # its former diagnostic section for existing installations.
 CORE_SENSOR_KEYS = frozenset(
     {
+        "device_fault_status",
         "battery_capacity",
         "home_load_energy",
         "average_grid_voltage",
@@ -59,13 +97,31 @@ CORE_SENSOR_KEYS = frozenset(
 # Keep vendor-specific counters out of the normal HA device page.  This key was
 # briefly promoted in v0.6.0, so handle it explicitly in case its persisted
 # registry entry no longer carries the original diagnostic category.
-ENGINEERING_SENSOR_KEYS = frozenset({"battery_charge_energy_from_ac"})
+ENGINEERING_SENSOR_KEYS = frozenset(
+    {
+        "battery_charge_energy_from_ac",
+        "device_model",
+        "device_serial_number",
+        "rated_power",
+        "pcs_state",
+        "ac_total_apparent_power",
+        "ac_power_factor",
+        "third_party_meter_power",
+        "third_party_meter_energy",
+        "inverter_power",
+        "inverter_reactive_power",
+        "grid_reactive_power",
+        "current_alarm_code",
+    }
+)
 
 # These four entities aggregate the raw PCS/BMS fault bitfields and expose the
 # decoded issue list as attributes.  The individual condition flags are useful
 # for service engineers, but add little value to a normal HA device page.
 CORE_BINARY_SENSOR_KEYS = frozenset(
     {
+        "device_fault",
+        "device_alarm",
         "inverter_fault",
         "inverter_warning",
         "bms_protection",

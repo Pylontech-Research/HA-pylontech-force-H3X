@@ -24,12 +24,13 @@ from .profiles import profile_control_description
 
 @dataclass(frozen=True, kw_only=True)
 class FH3XNumberEntityDescription(NumberEntityDescription):
-    """Describe an FH3X writable numeric register."""
+    """Describe an FH3X numeric register."""
 
     register_address: int
-    register_type: Literal["u16", "s16", "s32"]
+    register_type: Literal["u16", "s16", "s32", "u32"]
     raw_multiplier: float = 1
     required_ems_mode: int | None = None
+    read_only: bool = False
 
 
 NUMBER_DESCRIPTIONS = (
@@ -99,6 +100,21 @@ NUMBER_DESCRIPTIONS = (
         entity_registry_enabled_default=False,
         register_address=40401,
         register_type="s32",
+        read_only=True,
+    ),
+    FH3XNumberEntityDescription(
+        key="grid_import_power_limit",
+        translation_key="grid_import_power_limit",
+        native_unit_of_measurement=UnitOfPower.WATT,
+        native_min_value=0,
+        native_max_value=60000,
+        native_step=100,
+        mode=NumberMode.BOX,
+        entity_category=EntityCategory.CONFIG,
+        entity_registry_enabled_default=False,
+        register_address=40937,
+        register_type="u32",
+        read_only=True,
     ),
     FH3XNumberEntityDescription(
         key="peak_shaving_safety_soc",
@@ -214,6 +230,10 @@ class FH3XNumber(FH3XCoordinatorEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         description = self.entity_description
+        if description.read_only:
+            raise HomeAssistantError(
+                f"{description.key} is a read-only point and cannot be written."
+            )
         if (
             description.required_ems_mode is not None
             and self.coordinator.data.values.get("ems_mode")

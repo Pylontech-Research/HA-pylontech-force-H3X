@@ -50,6 +50,8 @@ from .protocol import (
     PCS_MONITOR_EXT_COUNT,
     PCS_PEAK_SHAVING_ADDRESS,
     PCS_PEAK_SHAVING_COUNT,
+    PCS_SITE_POWER_LIMIT_ADDRESS,
+    PCS_SITE_POWER_LIMIT_COUNT,
     FH3XIdentity,
     FH3XSnapshot,
     FH3XValue,
@@ -68,6 +70,7 @@ from .protocol import (
     decode_pcs,
     decode_pcs_monitor_ext,
     decode_peak_shaving_controls,
+    decode_site_power_limits,
     update_u16_bit,
 )
 
@@ -282,6 +285,11 @@ class FH3XModbusClient:
                 PCS_PEAK_SHAVING_ADDRESS,
                 PCS_PEAK_SHAVING_COUNT,
                 decode_peak_shaving_controls,
+            ),
+            (
+                PCS_SITE_POWER_LIMIT_ADDRESS,
+                PCS_SITE_POWER_LIMIT_COUNT,
+                decode_site_power_limits,
             ),
         )
         for address, count, decoder in blocks:

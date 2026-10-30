@@ -664,6 +664,245 @@ SCHEDULE_SENSOR_DESCRIPTIONS = tuple(
 )
 
 
+def _product_sensor(
+    key: str,
+    translation_key: str,
+    *,
+    device_class: SensorDeviceClass | None = None,
+    unit: str | None = None,
+    state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT,
+    precision: int | None = None,
+    options: tuple[str, ...] | None = None,
+    placeholders: dict[str, str] | None = None,
+) -> FH3XSensorEntityDescription:
+    """Describe a point from the product registration sheet."""
+    return FH3XSensorEntityDescription(
+        key=key,
+        translation_key=translation_key,
+        device_class=device_class,
+        native_unit_of_measurement=unit,
+        state_class=state_class,
+        options=options,
+        translation_placeholders=placeholders,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        suggested_display_precision=precision,
+    )
+
+
+PRODUCT_SENSOR_DESCRIPTIONS = (
+    _product_sensor("device_model", "device_model", state_class=None),
+    _product_sensor("device_serial_number", "device_serial_number", state_class=None),
+    _product_sensor(
+        "rated_power",
+        "rated_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.WATT,
+        precision=0,
+    ),
+    _product_sensor(
+        "max_charge_power",
+        "max_charge_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.KILO_WATT,
+        precision=3,
+    ),
+    _product_sensor(
+        "max_discharge_power",
+        "max_discharge_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.KILO_WATT,
+        precision=3,
+    ),
+    _product_sensor(
+        "device_fault_status",
+        "device_fault_status",
+        device_class=SensorDeviceClass.ENUM,
+        state_class=None,
+        options=("normal", "alarm", "fault"),
+    ),
+    _product_sensor(
+        "pcs_state",
+        "pcs_state",
+        device_class=SensorDeviceClass.ENUM,
+        state_class=None,
+        options=("waiting", "normal", "fault", "unknown"),
+    ),
+    _product_sensor(
+        "ac_total_apparent_power",
+        "ac_total_apparent_power",
+        unit="VA",
+        precision=0,
+    ),
+    _product_sensor(
+        "ac_power_factor", "ac_power_factor", state_class=None, precision=3
+    ),
+    _product_sensor(
+        "third_party_meter_power",
+        "third_party_meter_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.WATT,
+        precision=0,
+    ),
+    _product_sensor(
+        "third_party_meter_energy",
+        "third_party_meter_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        precision=2,
+    ),
+    _product_sensor(
+        "inverter_power",
+        "inverter_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.KILO_WATT,
+        precision=3,
+    ),
+    _product_sensor(
+        "inverter_reactive_power",
+        "inverter_reactive_power",
+        unit="kvar",
+        precision=3,
+    ),
+    _product_sensor(
+        "grid_reactive_power",
+        "grid_reactive_power",
+        unit="kvar",
+        precision=3,
+    ),
+    _product_sensor(
+        "ac_frequency",
+        "ac_frequency",
+        device_class=SensorDeviceClass.FREQUENCY,
+        unit=UnitOfFrequency.HERTZ,
+        precision=2,
+    ),
+    *(
+        _product_sensor(
+            f"ac_phase_{phase}_voltage",
+            "ac_phase_voltage",
+            device_class=SensorDeviceClass.VOLTAGE,
+            unit=UnitOfElectricPotential.VOLT,
+            precision=1,
+            placeholders={"phase": phase.upper()},
+        )
+        for phase in ("r", "s", "t")
+    ),
+    *(
+        _product_sensor(
+            f"ac_phase_{phase}_current",
+            "ac_phase_current",
+            device_class=SensorDeviceClass.CURRENT,
+            unit=UnitOfElectricCurrent.AMPERE,
+            precision=1,
+            placeholders={"phase": phase.upper()},
+        )
+        for phase in ("r", "s", "t")
+    ),
+    *(
+        _product_sensor(
+            f"meter_phase_{phase}_voltage",
+            "meter_phase_voltage",
+            device_class=SensorDeviceClass.VOLTAGE,
+            unit=UnitOfElectricPotential.VOLT,
+            precision=1,
+            placeholders={"phase": phase.upper()},
+        )
+        for phase in ("a", "b", "c")
+    ),
+    _product_sensor(
+        "meter_grid_frequency",
+        "meter_grid_frequency",
+        device_class=SensorDeviceClass.FREQUENCY,
+        unit=UnitOfFrequency.HERTZ,
+        precision=1,
+    ),
+    _product_sensor(
+        "battery_soc_bms",
+        "battery_soc_bms",
+        device_class=SensorDeviceClass.BATTERY,
+        unit=PERCENTAGE,
+        precision=0,
+    ),
+    _product_sensor(
+        "battery_soh",
+        "battery_soh",
+        unit=PERCENTAGE,
+        precision=0,
+    ),
+    _product_sensor(
+        "battery_temperature",
+        "battery_temperature",
+        device_class=SensorDeviceClass.TEMPERATURE,
+        unit=UnitOfTemperature.CELSIUS,
+        precision=1,
+    ),
+    _product_sensor(
+        "pv_power",
+        "pv_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.KILO_WATT,
+        precision=3,
+    ),
+    _product_sensor(
+        "pv_generation_energy",
+        "pv_generation_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        precision=2,
+    ),
+    _product_sensor(
+        "inverter_generation_energy",
+        "inverter_generation_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        precision=2,
+    ),
+    _product_sensor(
+        "inverter_consumption_energy",
+        "inverter_consumption_energy",
+        device_class=SensorDeviceClass.ENERGY,
+        unit=UnitOfEnergy.KILO_WATT_HOUR,
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        precision=3,
+    ),
+    _product_sensor(
+        "third_party_pv_power",
+        "third_party_pv_power",
+        device_class=SensorDeviceClass.POWER,
+        unit=UnitOfPower.KILO_WATT,
+        precision=3,
+    ),
+    _product_sensor("current_alarm_code", "current_alarm_code", state_class=None),
+    *(
+        _product_sensor(
+            f"{period}_{metric}",
+            f"{period}_{metric}",
+            device_class=SensorDeviceClass.ENERGY,
+            unit=UnitOfEnergy.KILO_WATT_HOUR,
+            # Period totals reset at the day/month boundary, so they are
+            # finite totals rather than continuously increasing counters.
+            state_class=SensorStateClass.TOTAL,
+            precision=3,
+        )
+        for period in ("daily", "monthly")
+        for metric in (
+            "battery_charge_energy",
+            "battery_discharge_energy",
+            "pv_generation_energy",
+            "third_party_pv_generation_energy",
+            "inverter_generation_energy",
+            "inverter_consumption_energy",
+            "grid_import_energy",
+            "grid_export_energy",
+        )
+    ),
+)
+
+
 def _detailed_bms_descriptions(values: Mapping[str, FH3XValue]):
     descriptions = []
     for key in sorted(values):
@@ -743,6 +982,7 @@ async def async_setup_entry(
             + DIAGNOSTIC_SENSOR_DESCRIPTIONS
             + ENGINEERING_SENSOR_DESCRIPTIONS
             + SCHEDULE_SENSOR_DESCRIPTIONS
+            + PRODUCT_SENSOR_DESCRIPTIONS
         )
     )
     async_add_entities(

@@ -43,7 +43,7 @@ class TestControlExposure(unittest.TestCase):
         self.assertEqual(len(EXPOSURE.DAILY_CONTROL_KEYS), 6)
         self.assertEqual(len(EXPOSURE.BASIC_CONFIG_KEYS), 4)
 
-    def test_advanced_profile_has_eight_controls_and_51_configuration(self) -> None:
+    def test_advanced_profile_has_eight_controls_and_52_configuration(self) -> None:
         enabled = {
             key
             for key in EXPOSURE.ALL_WRITABLE_KEYS
@@ -52,7 +52,7 @@ class TestControlExposure(unittest.TestCase):
         controls = {key for key in enabled if EXPOSURE.is_primary_control(key)}
         configuration = enabled - controls
         self.assertEqual(len(controls), 8)
-        self.assertEqual(len(configuration), 51)
+        self.assertEqual(len(configuration), 52)
         self.assertEqual(enabled, EXPOSURE.ALL_WRITABLE_KEYS)
 
     def test_schedule_details_are_advanced_only(self) -> None:
